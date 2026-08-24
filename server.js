@@ -72,29 +72,31 @@ bot.start(async (ctx) => {
     const username = ctx.from.first_name || 'Hunter';
 
     let user = await User.findOne({ userId });
+
     if (!user) {
         user = new User({
             userId,
             username,
             rupees: 1000,
-            aliens: [{
-                alienId: 'heatblast_base',
-                name: 'Heatblast',
-                nickname: 'Heatblast',
-                rarity: 'Common',
-                star: 0,
-                level: 1,
-                hp: 220,
-                maxHp: 220,
-                atk: 45,
-                def: 25,
-                element: 'Fire'
-            }]
+            aliens: []
         });
+
         await user.save();
-        ctx.reply(`🎉 Welcome to Alienoid Hunt, ${username}!\n\nStarter Alien: 🔥 Heatblast & ₹1,000 Rupees added to your profile!`);
+
+        ctx.reply(
+            `🔱 Hello ${username}, welcome to the Alienoid ||\n\n` +
+            `🎉 New Login Rewards : ₹1,000\n` +
+            `🎉 Your First Companion : Coming Soon 👽\n\n` +
+            `START NOW YOUR THRILLER JOURNEY ⚡`
+        );
     } else {
-        ctx.reply(`Welcome back, ${username}! Use /profile to view your stats or /hunt to find wild aliens.`);
+        ctx.reply(
+            `🔱 Welcome back ${username} to the Alienoid ||\n\n` +
+            `⚡ Your thriller journey continues...\n\n` +
+            `Use /profile to view your Hunter profile.\n` +
+            `Use /inventory to check your items.\n` +
+            `Use /hunt to hunt wild aliens.`
+        );
     }
 });
 
