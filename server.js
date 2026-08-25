@@ -951,7 +951,7 @@ Choose a category below to learn how the game works. 👇`;
     await ctx.answerCbQuery();
     await ctx.editMessageText(message, helpKeyboard);
 });
-
+console.log('🚀 Starting Telegram Bot...');
 bot.launch()
     .then(() => {
         console.log('🤖 Alienoid Telegram Bot Started Successfully!');
