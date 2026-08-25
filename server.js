@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema({
     hunts: { type: Number, default: 0 },
     duels: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
+    lastDailyClaim: {
+    type: Date,
+    default: null
+},
     inventory: {
         healerx: { type: Number, default: 0 },
         buff: { type: Number, default: 0 },
@@ -113,13 +117,15 @@ bot.command(['profile', 'me'], async (ctx) => {
     const rupees = String(user.rupees).padEnd(8, ' ');
 
     const profileMsg = 
-`<code>╔════ HUNTER INFO ════╗
-║ 👤 Name  : ${name} ║
-║ 📊 Level : ${lvl} ║
-║ ⚔️ Duels : ${duels} ║
-║ 🎯 Hunts : ${hunts} ║
-║ 💰 Rupees: ₹ ${rupees} ║
-╚═════════════════════╝</code>`;
+`<code> HUNTER INFO 
+──────────────────
+ 👤 Name  : ${name} 
+ 📊 Level : ${lvl} 
+ ⚔️ Duels : ${duels} 
+ 🎯 Hunts : ${hunts} 
+ 💰 Rupees: ₹ ${rupees} 
+ ──────────────────
+</code>`;
 
     ctx.replyWithHTML(profileMsg);
 });
@@ -168,6 +174,152 @@ bot.command(['bag', 'aliens'], async (ctx) => {
     ctx.reply(msg);
 });
 
+// ==================== DAILY REWARD ====================
+
+bot.command('daily', async (ctx) => {
+    try {
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply('⚠️ Please send /start first!');
+        }
+
+        const now = new Date();
+        const DAILY_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours
+
+        // Check previous claim
+        if (user.lastDailyClaim) {
+            const timePassed = now.getTime() - user.lastDailyClaim.getTime();
+
+            if (timePassed < DAILY_COOLDOWN) {
+                const remaining = DAILY_COOLDOWN - timePassed;
+
+                const hours = Math.floor(remaining / (1000 * 60 * 60));
+                const minutes = Math.floor(
+                    (remaining % (1000 * 60 * 60)) / (1000 * 60)
+                );
+
+                return ctx.reply(
+                    `⏳ Daily reward already claimed!\n\n` +
+                    `Come back in ${hours}h ${minutes}m.`
+                );
+            }
+        }
+
+        // Give ₹500 daily bonus
+        user.rupees += 500;
+        user.lastDailyClaim = now;
+
+        await user.save();
+
+        return ctx.reply(
+            `🎁 DAILY REWARD CLAIMED!\n\n` +
+            `💰 You received ₹500\n` +
+            `💵 Current Balance: ₹${user.rupees}\n\n` +
+            `Come back tomorrow for another reward! 🔱`
+        );
+
+    } catch (error) {
+        console.error('Daily command error:', error);
+        return ctx.reply('❌ Something went wrong. Please try again.');
+    }
+});
+
+// ==================== RUPPES PAYMENT ====================
+
+bot.command('rpay', async (ctx) => {
+    try {
+        const senderId = ctx.from.id;
+
+        // Must reply to another user's message
+        if (!ctx.message.reply_to_message) {
+            return ctx.reply(
+                '⚠️ Reply to a player\'s message and use:\n\n' +
+                '/rpay <amount>\n\n' +
+                'Example: /rpay 200'
+            );
+        }
+
+        const receiverId = ctx.message.reply_to_message.from.id;
+
+        // Prevent self-payment
+        if (senderId === receiverId) {
+            return ctx.reply(
+                '❌ You cannot transfer Rupees to yourself.'
+            );
+        }
+
+        // Get amount
+        const args = ctx.message.text.trim().split(/\s+/);
+        const amount = Number(args[1]);
+
+        // Invalid / zero / negative amount
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return ctx.reply(
+                'Are you a fool, kiddo? Don\'t mess around here. 😈'
+            );
+        }
+
+        // Only whole Rupees
+        if (!Number.isInteger(amount)) {
+            return ctx.reply(
+                '⚠️ Please enter a whole Rupee amount.'
+            );
+        }
+
+        // Find both users
+        const sender = await User.findOne({ userId: senderId });
+        const receiver = await User.findOne({ userId: receiverId });
+
+        if (!sender) {
+            return ctx.reply('⚠️ Please send /start first!');
+        }
+
+        if (!receiver) {
+            return ctx.reply(
+                '❌ This player has not started Alienoid Hunt yet.'
+            );
+        }
+
+        // Check sender balance
+        if (sender.rupees < amount) {
+            return ctx.reply(
+                '❌ LOW BALANCE\n\n' +
+                'Transfer denied!!\n\n' +
+                `💰 Your Balance: ₹${sender.rupees}\n` +
+                `💸 Required: ₹${amount}`
+            );
+        }
+
+        // Transfer
+        sender.rupees -= amount;
+        receiver.rupees += amount;
+
+        await sender.save();
+        await receiver.save();
+
+        const receiverName =
+            receiver.username ||
+            ctx.message.reply_to_message.from.first_name ||
+            'Hunter';
+
+        return ctx.reply(
+            `💸 PAYMENT SUCCESSFUL ${amount} 🎉\n\n` +
+            `To: ${receiverName}\n` +
+            `💰 Amount: ₹${amount}\n\n` +
+            `💵 Your Balance: ₹${sender.rupees}`
+        );
+
+    } catch (error) {
+        console.error('RPay command error:', error);
+
+        return ctx.reply(
+            '❌ Payment failed due to a temporary error. Please try again.'
+        );
+    }
+});
 bot.launch().then(() => console.log('🤖 Alienoid Hunt Bot is online!'));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
