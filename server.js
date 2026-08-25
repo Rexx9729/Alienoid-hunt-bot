@@ -153,7 +153,7 @@ bot.telegram.setMyCommands([
 // ==================== ADD ALIEN ====================
 
 bot.command('addalien', async (ctx) => {
-
+console.log('🔥 ADDALIEN COMMAND RECEIVED');
     ctx.session.addAlien = {
         step: 'name'
     };
