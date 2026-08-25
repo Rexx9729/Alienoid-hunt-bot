@@ -70,6 +70,43 @@ const User = mongoose.model('User', userSchema);
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
 
+// ==================== TELEGRAM COMMAND MENU ====================
+
+// Private DM command menu
+bot.telegram.setMyCommands([
+    { command: 'start', description: 'Start Alienoid Hunt' },
+    { command: 'profile', description: 'View your Hunter profile' },
+    { command: 'inventory', description: 'View your items and scans' },
+    { command: 'bag', description: 'View your collected aliens' },
+    { command: 'hunt', description: 'Hunt a wild alien' },
+    { command: 'daily', description: 'Claim your daily ₹500 reward' },
+    { command: 'rpay', description: 'Send Rupees to another player' },
+    { command: 'agive', description: 'Give an alien to another player' },
+    { command: 'trade', description: 'Trade aliens with another player' },
+    { command: 'give', description: 'Give an item to another player' },
+    { command: 'donate', description: 'Donate a scan to another player' },
+    { command: 'help', description: 'Open Alienoid Hunt Help' }
+], {
+    scope: { type: 'all_private_chats' }
+});
+
+// Group command menu
+bot.telegram.setMyCommands([
+    { command: 'start', description: 'Start Alienoid Hunt' },
+    { command: 'profile', description: 'View your Hunter profile' },
+    { command: 'inventory', description: 'View your items and scans' },
+    { command: 'bag', description: 'View your collected aliens' },
+    { command: 'daily', description: 'Claim your daily ₹500 reward' },
+    { command: 'rpay', description: 'Send Rupees to another player' },
+    { command: 'agive', description: 'Give an alien to another player' },
+    { command: 'trade', description: 'Trade aliens with another player' },
+    { command: 'give', description: 'Give an item to another player' },
+    { command: 'donate', description: 'Donate a scan to another player' },
+    { command: 'help', description: 'Open Alienoid Hunt Help' }
+], {
+    scope: { type: 'all_group_chats' }
+});
+
 // Commands
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
@@ -145,15 +182,17 @@ bot.command(['inventory', 'items'], async (ctx) => {
     const aScan = String(user.inventory.absoluteScan).padEnd(8, ' ');
 
     const invMsg = 
-`<code>╔══════ INVENTORY ══════╗
-║ 💰 Rupees : ₹ ${rupees} ║
-║ 🧪 Healerx: ${healerx} ║
-║ 💊 Buff   : ${buff} ║
-║ 🛡️ Defence: ${defense} ║
-║ ⚠️ S.Scan : ${sScan} ║
-║ ☣️ M.Scan : ${mScan} ║
-║ ☢️ A.Scan : ${aScan} ║
-╚═══════════════════════╝</code>`;
+`<code> INVENTORY 
+────────────────
+ 💰 Rupees : ₹ ${rupees}
+ 🧪 Healerx: ${healerx}
+ 💊 Buff   : ${buff}
+ 🛡️ Defence: ${defense} 
+ ⚠️ S.Scan : ${sScan} 
+ ☣️ M.Scan : ${mScan} 
+ ☢️ A.Scan : ${aScan} 
+ ────────────────
+</code>`;
 
     ctx.replyWithHTML(invMsg);
 });
@@ -320,6 +359,242 @@ bot.command('rpay', async (ctx) => {
         );
     }
 });
+// ==================== HELP MENU ====================
+
+const helpKeyboard = {
+    reply_markup: {
+        inline_keyboard: [
+            [
+                { text: '📜 Commands', callback_data: 'help_commands' },
+                { text: '🎒 Items', callback_data: 'help_items' }
+            ],
+            [
+                { text: '⭐ Star System', callback_data: 'help_stars' },
+                { text: '🆘 Support', callback_data: 'help_support' }
+            ]
+        ]
+    }
+};
+
+bot.command('help', async (ctx) => {
+    const helpMessage =
+`🔱 ALIENOID HUNT
+
+👽 Hunt. Capture. Battle. Collect.
+
+Welcome to Alienoid Hunt, Hunter!
+
+Choose a category below to learn how the game works. 👇`;
+
+    await ctx.reply(helpMessage, helpKeyboard);
+});
+
+
+// ==================== HELP: COMMANDS ====================
+
+bot.action('help_commands', async (ctx) => {
+
+    const message =
+`📜 ALIENOID HUNT — COMMANDS
+
+/start
+Start your journey and create your Hunter profile.
+
+/profile
+View your level, Rupees, Hunts, Duels and wins.
+
+/inventory
+View your items, scans and Rupees.
+
+/bag
+View your collected aliens.
+
+/hunt
+Hunt a wild alien, capture it or defeat it.
+⚠️ DM only.
+
+/daily
+Claim your daily ₹500 reward.
+
+/rpay <amount>
+Transfer Rupees to another player.
+Reply to their message.
+
+/agive
+Give an alien to another player.
+
+/trade
+Trade an alien with another player.
+
+/give <item>
+Give an item to another player.
+
+/donate <scan>
+Donate a scan to another player.
+
+/help
+Open the Alienoid Hunt Help Menu.`;
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(message, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '⬅️ Back', callback_data: 'help_main' }]
+            ]
+        }
+    });
+});
+
+
+// ==================== HELP: ITEMS ====================
+
+bot.action('help_items', async (ctx) => {
+
+    const message =
+`🎒 ALIENOID HUNT — ITEMS
+
+🧪 HEALERX — ₹200
+Restores HP during battle.
+
+💊 BUFF — ₹150
+Provides a battle advantage.
+Selected before the battle starts.
+
+🛡️ DEFENSE — ₹120
+Provides a defensive advantage.
+Selected before the battle starts.
+
+🔍 NORMAL SCAN — ₹10
+Used to capture Basic, Common and Rare aliens.
+
+⚡ SUPER SCAN — ₹1,000
+A powerful scan with better chances against higher rarities.
+
+☣️ MEGA SCAN — ₹2,500
+A stronger scan capable of reaching high-tier aliens.
+
+☢️ ABSOLUTE SCAN — ₹10,000
+The strongest scan.
+It can capture Legendary and has a chance against Cosmic and Alien X.`;
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(message, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '⬅️ Back', callback_data: 'help_main' }]
+            ]
+        }
+    });
+});
+
+
+// ==================== HELP: STAR SYSTEM ====================
+
+bot.action('help_stars', async (ctx) => {
+
+    const message =
+`⭐ STAR SYSTEM
+
+Merge identical aliens to increase their Star level.
+
+3 Normal Aliens
+        ↓
+     ⭐ 1-Star
+        ↓
+3 × 1-Star Aliens
+        ↓
+    ⭐⭐ 2-Star
+        ↓
+3 × 2-Star Aliens
+        ↓
+   ⭐⭐⭐ 3-Star
+
+⚡ POWER SCALING
+
+Normal → 100%
+⭐ 1-Star → 130%
+⭐⭐ 2-Star → 160%
+⭐⭐⭐ 3-Star → 200%
+
+The Star System works across all rarities.
+
+💰 MERGE FEES
+
+Basic
+₹200 → 1★
+₹400 → 2★
+₹600 → 3★
+
+Common
+₹400 → 1★
+₹600 → 2★
+₹800 → 3★
+
+Rare
+₹600 → 1★
+₹800 → 2★
+₹1,000 → 3★
+
+Legendary
+₹1,000 → 1★
+₹1,200 → 2★
+₹1,400 → 3★
+
+Cosmic
+₹2,000 → 1★
+₹2,500 → 2★
+₹3,000 → 3★`;
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(message, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '⬅️ Back', callback_data: 'help_main' }]
+            ]
+        }
+    });
+});
+
+
+// ==================== HELP: SUPPORT ====================
+
+bot.action('help_support', async (ctx) => {
+
+    const message =
+`🆘 ALIENOID HUNT — SUPPORT
+
+Our official support group is currently being prepared.
+
+Please check back soon! 🔱`;
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(message, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '⬅️ Back', callback_data: 'help_main' }]
+            ]
+        }
+    });
+});
+
+
+// ==================== HELP: BACK ====================
+
+bot.action('help_main', async (ctx) => {
+
+    const message =
+`🔱 ALIENOID HUNT
+
+👽 Hunt. Capture. Battle. Collect.
+
+Welcome to Alienoid Hunt, Hunter!
+
+Choose a category below to learn how the game works. 👇`;
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(message, helpKeyboard);
+});
+
 bot.launch().then(() => console.log('🤖 Alienoid Hunt Bot is online!'));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
