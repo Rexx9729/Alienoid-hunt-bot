@@ -1,7 +1,7 @@
 const { Telegraf } = require('telegraf');
 const mongoose = require('mongoose');
 const express = require('express');
-
+const { generateAlienStats } = require('./services/alienGenerator');
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
