@@ -952,7 +952,13 @@ Choose a category below to learn how the game works. 👇`;
     await ctx.editMessageText(message, helpKeyboard);
 });
 
-bot.launch().then(() => console.log('🤖 Alienoid Hunt Bot is online!'));
+bot.launch()
+    .then(() => {
+        console.log('🤖 Alienoid Telegram Bot Started Successfully!');
+    })
+    .catch((error) => {
+        console.error('❌ Telegram Bot Launch Error:', error);
+    });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
