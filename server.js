@@ -1,7 +1,8 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, session } = require('telegraf');
 const mongoose = require('mongoose');
 const express = require('express');
 const { generateAlienStats } = require('./services/alienGenerator');
+const Alien = require('./models/Alien');
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,7 +70,42 @@ const User = mongoose.model('User', userSchema);
 
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
+bot.use(session());
+// ==================== ALIENOID ECONOMY ====================
 
+const HUNT_COST = 20;
+
+const ALIEN_ECONOMY = {
+    Basic: {
+        killReward: 80,
+        spawnThreshold: 1
+    },
+
+    Common: {
+        killReward: 120,
+        spawnThreshold: 25
+    },
+
+    Rare: {
+        killReward: 220,
+        spawnThreshold: 80
+    },
+
+    Legendary: {
+        killReward: 520,
+        spawnThreshold: 200
+    },
+
+    Cosmic: {
+        killReward: 1020,
+        spawnThreshold: 400
+    },
+
+    God: {
+        killReward: 2020,
+        spawnThreshold: 600
+    }
+};
 // ==================== TELEGRAM COMMAND MENU ====================
 
 // Private DM command menu
@@ -106,7 +142,290 @@ bot.telegram.setMyCommands([
 ], {
     scope: { type: 'all_group_chats' }
 });
+// ==================== ADD ALIEN ====================
 
+bot.command('addalien', async (ctx) => {
+
+    ctx.session.addAlien = {
+        step: 'name'
+    };
+
+    await ctx.reply(
+        `👽 ADD NEW ALIEN\n\n` +
+        `Step 1/4\n` +
+        `Enter alien name:`
+    );
+});
+
+
+// ==================== ADD ALIEN — NAME ====================
+
+bot.on('text', async (ctx, next) => {
+
+    if (!ctx.session?.addAlien) {
+        return next();
+    }
+
+    const data = ctx.session.addAlien;
+
+    if (data.step !== 'name') {
+        return next();
+    }
+
+    const name = ctx.message.text.trim();
+
+    if (name.length < 2 || name.length > 50) {
+        return ctx.reply(
+            '⚠️ Alien name must be between 2 and 50 characters.'
+        );
+    }
+
+    const existingAlien = await Alien.findOne({ name });
+
+    if (existingAlien) {
+        return ctx.reply(
+            '❌ This alien already exists.\n\n' +
+            'Please enter another name.'
+        );
+    }
+
+    data.name = name;
+    data.step = 'rarity';
+
+    await ctx.reply(
+        `👽 ${name}\n\n` +
+        `Step 2/4\n` +
+        `Select rarity:`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '⚪ Basic', callback_data: 'alien_rarity_Basic' },
+                        { text: '🟢 Common', callback_data: 'alien_rarity_Common' }
+                    ],
+                    [
+                        { text: '🔵 Rare', callback_data: 'alien_rarity_Rare' },
+                        { text: '🟣 Legendary', callback_data: 'alien_rarity_Legendary' }
+                    ],
+                    [
+                        { text: '🌌 Cosmic', callback_data: 'alien_rarity_Cosmic' },
+                        { text: '👑 God', callback_data: 'alien_rarity_God' }
+                    ]
+                ]
+            }
+        }
+    );
+});
+
+
+// ==================== ADD ALIEN — RARITY ====================
+
+bot.action(/^alien_rarity_(.+)$/, async (ctx) => {
+
+    const rarity = ctx.match[1];
+
+    if (!ctx.session?.addAlien) {
+        return ctx.answerCbQuery(
+            '⚠️ Start again with /addalien'
+        );
+    }
+
+    const data = ctx.session.addAlien;
+
+    if (!ALIEN_ECONOMY[rarity]) {
+        return ctx.answerCbQuery(
+            '❌ Invalid rarity.',
+            { show_alert: true }
+        );
+    }
+
+    data.rarity = rarity;
+    data.step = 'element';
+
+    await ctx.answerCbQuery();
+
+    const elementButtons = [
+        [
+            { text: '🔥 Fire', callback_data: 'alien_element_Fire' },
+            { text: '💧 Water', callback_data: 'alien_element_Water' }
+        ],
+        [
+            { text: '🌍 Earth', callback_data: 'alien_element_Earth' },
+            { text: '🪨 Rock', callback_data: 'alien_element_Rock' }
+        ],
+        [
+            { text: '❄️ Ice', callback_data: 'alien_element_Ice' },
+            { text: '☣️ Acid', callback_data: 'alien_element_Acid' }
+        ],
+        [
+            { text: '⚡ Electric', callback_data: 'alien_element_Electric' },
+            { text: '🌪️ Wind', callback_data: 'alien_element_Wind' }
+        ],
+        [
+            { text: '🥊 Physical', callback_data: 'alien_element_Physical' },
+            { text: '🧠 Psychic', callback_data: 'alien_element_Psychic' }
+        ],
+        [
+            { text: '🌀 Gravity', callback_data: 'alien_element_Gravity' }
+        ]
+    ];
+
+    // Void only belongs to God tier.
+    if (rarity === 'God') {
+        elementButtons.push([
+            { text: '🌑 Void', callback_data: 'alien_element_Void' }
+        ]);
+    }
+
+    await ctx.editMessageText(
+        `👽 ${data.name}\n` +
+        `⭐ ${data.rarity}\n\n` +
+        `Step 3/4\n` +
+        `Select element:`,
+        {
+            reply_markup: {
+                inline_keyboard: elementButtons
+            }
+        }
+    );
+});
+
+
+// ==================== ADD ALIEN — ELEMENT ====================
+
+bot.action(/^alien_element_(.+)$/, async (ctx) => {
+
+    const element = ctx.match[1];
+
+    if (!ctx.session?.addAlien) {
+        return ctx.answerCbQuery(
+            '⚠️ Start again with /addalien'
+        );
+    }
+
+    const data = ctx.session.addAlien;
+
+    if (element === 'Void' && data.rarity !== 'God') {
+        return ctx.answerCbQuery(
+            '❌ Void is only available for God tier.',
+            { show_alert: true }
+        );
+    }
+
+    data.element = element;
+    data.step = 'image';
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        `👽 ${data.name}\n` +
+        `⭐ Rarity: ${data.rarity}\n` +
+        `🌌 Element: ${data.element}\n\n` +
+        `Step 4/4\n` +
+        `🖼️ Send the alien image now.`
+    );
+});
+
+
+// ==================== ADD ALIEN — IMAGE ====================
+
+bot.on('photo', async (ctx, next) => {
+
+    if (!ctx.session?.addAlien) {
+        return next();
+    }
+
+    const data = ctx.session.addAlien;
+
+    if (data.step !== 'image') {
+        return next();
+    }
+
+    try {
+
+        const largestPhoto =
+            ctx.message.photo[ctx.message.photo.length - 1];
+
+        const imageFileId = largestPhoto.file_id;
+
+        // Generate HP, attack, defense, speed and 3 unique attacks.
+        const generated = generateAlienStats(
+            data.name,
+            data.rarity,
+            data.element
+        );
+
+        const economy = ALIEN_ECONOMY[data.rarity];
+
+        const alien = new Alien({
+
+            name: generated.name,
+            rarity: generated.rarity,
+            element: generated.element,
+
+            imageFileId,
+
+            maxHp: generated.maxHp,
+            defense: generated.defense,
+            speed: generated.speed,
+            baseAttack: generated.baseAttack,
+
+            attacks: generated.attacks,
+
+            maxStar: 3,
+
+            huntRewardMin: economy.killReward,
+            huntRewardMax: economy.killReward,
+
+            spawnThreshold: economy.spawnThreshold,
+
+            normalScanAvailable:
+                ['Basic', 'Common', 'Rare'].includes(data.rarity)
+        });
+
+        await alien.save();
+
+        const attackText = generated.attacks
+            .map((attack, index) =>
+                `${index + 1}. ${attack.name} — ${attack.damage} DMG`
+            )
+            .join('\n');
+
+        await ctx.reply(
+            `✅ ALIEN ADDED SUCCESSFULLY!\n\n` +
+
+            `👽 ${generated.name}\n` +
+            `⭐ Rarity: ${generated.rarity}\n` +
+            `🌌 Element: ${generated.element}\n\n` +
+
+            `❤️ HP: ${generated.maxHp}\n` +
+            `🛡️ Defense: ${generated.defense}\n` +
+            `⚡ Speed: ${generated.speed}\n` +
+            `⚔️ Base Attack: ${generated.baseAttack}\n\n` +
+
+            `🥊 ATTACKS\n` +
+            `${attackText}\n\n` +
+
+            `💰 Kill Reward: ₹${economy.killReward}\n` +
+            `🎯 Spawn Threshold: ${economy.spawnThreshold} hunts\n\n` +
+
+            `🗄️ Saved to MongoDB.`
+        );
+
+        ctx.session.addAlien = null;
+
+    } catch (error) {
+
+        console.error('❌ Add Alien Error:', error);
+
+        ctx.session.addAlien = null;
+
+        await ctx.reply(
+            `❌ Failed to add alien.\n\n` +
+            `Error: ${error.message}`
+        );
+    }
+});
 // Commands
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
