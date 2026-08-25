@@ -1,7 +1,7 @@
 // ==================== ALIEN GENERATOR ====================
 
 // Rarity controls overall power.
-// HP and Attack are based on the final ranges we decided.
+// Element controls fighting style.
 
 const RARITY_STATS = {
     Basic: {
@@ -37,9 +37,6 @@ const RARITY_STATS = {
 
 
 // ==================== ELEMENT PROFILES ====================
-
-// Element controls fighting style.
-// Defense and Speed are NOT based directly on rarity.
 
 const ELEMENT_PROFILES = {
 
@@ -98,7 +95,6 @@ const ELEMENT_PROFILES = {
         speed: [12, 20]
     },
 
-    // Void is reserved for God-tier aliens.
     Void: {
         defense: [30, 40],
         speed: [28, 40]
@@ -106,81 +102,376 @@ const ELEMENT_PROFILES = {
 };
 
 
-// ==================== ATTACK TEMPLATES ====================
+// ==================== ATTACK NAME POOLS ====================
+//
+// Each element has multiple words for each attack style.
+// The generator combines them randomly so different
+// aliens of the same element can have different attacks.
+//
 
-const ELEMENT_ATTACKS = {
+const ATTACK_POOLS = {
 
-    Fire: [
-        ['Flame Strike', 0.90],
-        ['Inferno Burst', 1.00],
-        ['Hellfire Blast', 1.15]
-    ],
+    Earth: {
+        first: [
+            'Rock Throw',
+            'Stone Throw',
+            'Earth Shot',
+            'Boulder Toss',
+            'Terra Strike',
+            'Ground Spear',
+            'Stone Barrage'
+        ],
 
-    Water: [
-        ['Water Strike', 0.90],
-        ['Aqua Burst', 1.00],
-        ['Tidal Crash', 1.15]
-    ],
+        second: [
+            'Ground Vibration',
+            'Earth Break',
+            'Seismic Burst',
+            'Terra Crush',
+            'Ground Breaker',
+            'Fault Line',
+            'Seismic Punch'
+        ],
 
-    Earth: [
-        ['Earth Smash', 0.90],
-        ['Ground Breaker', 1.00],
-        ['Earthquake', 1.15]
-    ],
+        third: [
+            'Mountain Smash',
+            'Earthquake',
+            'Mountain Break',
+            'Terra Collapse',
+            'World Crusher',
+            'Titanic Slam',
+            'Earth Shatter'
+        ]
+    },
 
-    Rock: [
-        ['Rock Smash', 0.90],
-        ['Stone Crush', 1.00],
-        ['Mountain Crash', 1.15]
-    ],
 
-    Ice: [
-        ['Ice Strike', 0.90],
-        ['Frost Burst', 1.00],
-        ['Glacial Crash', 1.15]
-    ],
+    Rock: {
+        first: [
+            'Stone Throw',
+            'Rock Shot',
+            'Pebble Barrage',
+            'Boulder Toss',
+            'Granite Strike',
+            'Rock Spear'
+        ],
 
-    Acid: [
-        ['Acid Splash', 0.90],
-        ['Corrosive Burst', 1.00],
-        ['Acid Storm', 1.15]
-    ],
+        second: [
+            'Stone Crush',
+            'Rock Breaker',
+            'Granite Smash',
+            'Boulder Crash',
+            'Rock Burst',
+            'Stone Hammer'
+        ],
 
-    Electric: [
-        ['Shock Strike', 0.90],
-        ['Thunder Burst', 1.00],
-        ['Lightning Crash', 1.15]
-    ],
+        third: [
+            'Mountain Crash',
+            'Titan Rockfall',
+            'Colossal Smash',
+            'Mountain Break',
+            'Earthshaking Slam',
+            'Rock Cataclysm'
+        ]
+    },
 
-    Wind: [
-        ['Wind Slash', 0.90],
-        ['Gale Burst', 1.00],
-        ['Cyclone Crash', 1.15]
-    ],
 
-    Physical: [
-        ['Heavy Strike', 0.90],
-        ['Power Smash', 1.00],
-        ['Brutal Impact', 1.15]
-    ],
+    Water: {
+        first: [
+            'Water Shot',
+            'Aqua Strike',
+            'Water Bullet',
+            'Tidal Shot',
+            'Hydro Blast',
+            'Aqua Spear'
+        ],
 
-    Psychic: [
-        ['Mind Blast', 0.90],
-        ['Psychic Burst', 1.00],
-        ['Mind Crush', 1.15]
-    ],
+        second: [
+            'Water Surge',
+            'Aqua Burst',
+            'Tidal Crash',
+            'Hydro Crush',
+            'Raging Wave',
+            'Tidal Strike'
+        ],
 
-    Gravity: [
-        ['Gravity Strike', 0.90],
-        ['Gravity Crush', 1.00],
-        ['Gravitational Collapse', 1.15]
-    ],
+        third: [
+            'Tsunami',
+            'Ocean Breaker',
+            'Tidal Cataclysm',
+            'Maelstrom',
+            'Abyssal Wave',
+            'Oceanic Crash'
+        ]
+    },
 
-    Void: [
-        ['Void Strike', 0.90],
-        ['Void Burst', 1.00],
-        ['Reality Break', 1.15]
-    ]
+
+    Ice: {
+        first: [
+            'Ice Shard',
+            'Frost Shot',
+            'Frozen Spear',
+            'Ice Spike',
+            'Crystal Throw',
+            'Frost Needle'
+        ],
+
+        second: [
+            'Frost Burst',
+            'Ice Breaker',
+            'Glacial Strike',
+            'Frozen Crash',
+            'Crystal Crush',
+            'Blizzard Smash'
+        ],
+
+        third: [
+            'Glacial Collapse',
+            'Absolute Freeze',
+            'Frozen Cataclysm',
+            'Ice Age',
+            'Glacier Break',
+            'Blizzard Doom'
+        ]
+    },
+
+
+    Fire: {
+        first: [
+            'Flame Shot',
+            'Fire Strike',
+            'Ember Blast',
+            'Flame Burst',
+            'Blaze Shot',
+            'Inferno Bolt'
+        ],
+
+        second: [
+            'Flame Burst',
+            'Inferno Strike',
+            'Blazing Crash',
+            'Firestorm',
+            'Molten Burst',
+            'Inferno Smash'
+        ],
+
+        third: [
+            'Inferno Doom',
+            'Hellfire Blast',
+            'Volcanic Cataclysm',
+            'Solar Inferno',
+            'Flame Apocalypse',
+            'Inferno Collapse'
+        ]
+    },
+
+
+    Acid: {
+        first: [
+            'Acid Shot',
+            'Acid Splash',
+            'Corrosive Shot',
+            'Toxic Spit',
+            'Acid Bolt',
+            'Venom Splash'
+        ],
+
+        second: [
+            'Corrosive Burst',
+            'Acid Crash',
+            'Toxic Wave',
+            'Venom Burst',
+            'Acid Storm',
+            'Corrosion Break'
+        ],
+
+        third: [
+            'Acid Cataclysm',
+            'Corrosive Apocalypse',
+            'Toxic Devastation',
+            'Venomous Collapse',
+            'Acid Rain',
+            'Ultimate Corrosion'
+        ]
+    },
+
+
+    Electric: {
+        first: [
+            'Spark Shot',
+            'Electric Strike',
+            'Shock Bolt',
+            'Thunder Shot',
+            'Volt Blast',
+            'Lightning Spear'
+        ],
+
+        second: [
+            'Thunder Burst',
+            'Voltage Crash',
+            'Lightning Break',
+            'Shockwave',
+            'Electric Storm',
+            'Thunder Strike'
+        ],
+
+        third: [
+            'Lightning Apocalypse',
+            'Thunder Cataclysm',
+            'Volt Overload',
+            'Heavenly Thunder',
+            'Storm Judgment',
+            'Lightning Collapse'
+        ]
+    },
+
+
+    Wind: {
+        first: [
+            'Wind Slash',
+            'Gale Shot',
+            'Air Blade',
+            'Wind Cutter',
+            'Air Strike',
+            'Gust Blast'
+        ],
+
+        second: [
+            'Gale Burst',
+            'Cyclone Strike',
+            'Wind Breaker',
+            'Storm Slash',
+            'Tempest Crash',
+            'Cyclone Crush'
+        ],
+
+        third: [
+            'Tornado',
+            'Hurricane Doom',
+            'Tempest Cataclysm',
+            'Sky Breaker',
+            'Cyclone Apocalypse',
+            'Heavenfall'
+        ]
+    },
+
+
+    Physical: {
+        first: [
+            'Heavy Punch',
+            'Power Strike',
+            'Combat Slash',
+            'Brutal Hit',
+            'Iron Fist',
+            'Force Strike'
+        ],
+
+        second: [
+            'Power Smash',
+            'Brutal Impact',
+            'Heavy Crush',
+            'Combat Breaker',
+            'Force Crash',
+            'Titan Strike'
+        ],
+
+        third: [
+            'Ultimate Smash',
+            'Devastating Blow',
+            'Titanic Impact',
+            'Final Crusher',
+            'World Breaker',
+            'Absolute Strike'
+        ]
+    },
+
+
+    Psychic: {
+        first: [
+            'Mind Blast',
+            'Psychic Shot',
+            'Mental Spike',
+            'Mind Pierce',
+            'Psy Bolt',
+            'Thought Strike'
+        ],
+
+        second: [
+            'Psychic Burst',
+            'Mind Crush',
+            'Mental Break',
+            'Psy Shock',
+            'Mind Shatter',
+            'Neural Crash'
+        ],
+
+        third: [
+            'Mind Apocalypse',
+            'Psychic Collapse',
+            'Mental Oblivion',
+            'Mind Rupture',
+            'Psy Cataclysm',
+            'Consciousness Break'
+        ]
+    },
+
+
+    Gravity: {
+        first: [
+            'Gravity Shot',
+            'Gravity Pulse',
+            'Mass Strike',
+            'Gravity Spear',
+            'Pressure Blast',
+            'Graviton Shot'
+        ],
+
+        second: [
+            'Gravity Crush',
+            'Gravity Break',
+            'Mass Collapse',
+            'Gravitational Burst',
+            'Pressure Crash',
+            'Gravity Well'
+        ],
+
+        third: [
+            'Gravity Collapse',
+            'Planet Crusher',
+            'Singularity Crash',
+            'Mass Extinction',
+            'Gravity Cataclysm',
+            'World Collapse'
+        ]
+    },
+
+
+    Void: {
+        first: [
+            'Void Shot',
+            'Null Strike',
+            'Reality Pierce',
+            'Void Bolt',
+            'Existence Break',
+            'Dimensional Slash'
+        ],
+
+        second: [
+            'Void Burst',
+            'Reality Break',
+            'Null Collapse',
+            'Dimensional Crush',
+            'Existence Rupture',
+            'Void Collapse'
+        ],
+
+        third: [
+            'Reality Erasure',
+            'Existence Collapse',
+            'Dimensional Apocalypse',
+            'Void Cataclysm',
+            'Absolute Nullification',
+            'Reality End'
+        ]
+    }
 };
 
 
@@ -190,6 +481,70 @@ function randomNumber(min, max) {
     return Math.floor(
         Math.random() * (max - min + 1)
     ) + min;
+}
+
+
+// ==================== RANDOM ATTACK ====================
+
+function getUniqueAttack(pool, usedNames) {
+
+    const available = pool.filter(
+        attackName => !usedNames.has(attackName)
+    );
+
+    if (available.length === 0) {
+        throw new Error('Not enough unique attack names available.');
+    }
+
+    const selected =
+        available[randomNumber(0, available.length - 1)];
+
+    usedNames.add(selected);
+
+    return selected;
+}
+
+
+// ==================== GENERATE ATTACKS ====================
+
+function generateAttacks(element, baseAttack) {
+
+    const pool =
+        ATTACK_POOLS[element] || ATTACK_POOLS.Physical;
+
+    const usedNames = new Set();
+
+    const attack1 = getUniqueAttack(
+        pool.first,
+        usedNames
+    );
+
+    const attack2 = getUniqueAttack(
+        pool.second,
+        usedNames
+    );
+
+    const attack3 = getUniqueAttack(
+        pool.third,
+        usedNames
+    );
+
+    return [
+        {
+            name: attack1,
+            damage: Math.round(baseAttack * 0.90)
+        },
+
+        {
+            name: attack2,
+            damage: Math.round(baseAttack * 1.00)
+        },
+
+        {
+            name: attack3,
+            damage: Math.round(baseAttack * 1.15)
+        }
+    ];
 }
 
 
@@ -207,43 +562,42 @@ function generateAlienStats(name, rarity, element) {
 
     // Void is God-tier only.
     if (element === 'Void' && rarity !== 'God') {
-        throw new Error('Void element is only available for God-tier aliens.');
+        throw new Error(
+            'Void element is only available for God-tier aliens.'
+        );
     }
 
     const rarityStats = RARITY_STATS[rarity];
     const elementStats = ELEMENT_PROFILES[element];
 
-    // Rarity decides HP and base attack.
+    // Rarity decides HP.
     const maxHp = randomNumber(
         rarityStats.hp[0],
         rarityStats.hp[1]
     );
 
+    // Rarity decides base attack.
     const baseAttack = randomNumber(
         rarityStats.attack[0],
         rarityStats.attack[1]
     );
 
-    // Element decides Defense and Speed.
+    // Element decides defense.
     const defense = randomNumber(
         elementStats.defense[0],
         elementStats.defense[1]
     );
 
+    // Element decides speed.
     const speed = randomNumber(
         elementStats.speed[0],
         elementStats.speed[1]
     );
 
-    // Generate exactly 3 attacks.
-    const attackTemplates =
-        ELEMENT_ATTACKS[element] || ELEMENT_ATTACKS.Physical;
-
-    const attacks = attackTemplates.map(
-        ([attackName, multiplier]) => ({
-            name: attackName,
-            damage: Math.round(baseAttack * multiplier)
-        })
+    // Generate 3 unique attacks for THIS alien.
+    const attacks = generateAttacks(
+        element,
+        baseAttack
     );
 
     return {
@@ -268,5 +622,6 @@ function generateAlienStats(name, rarity, element) {
 module.exports = {
     generateAlienStats,
     RARITY_STATS,
-    ELEMENT_PROFILES
+    ELEMENT_PROFILES,
+    ATTACK_POOLS
 };
