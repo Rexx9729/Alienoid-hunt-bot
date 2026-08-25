@@ -114,7 +114,7 @@ const alienSchema = new mongoose.Schema(
         },
 
         // Number of hunts required for an average spawn
-        spawnEvery: {
+        spawnThreshold: {
             type: Number,
             required: true
         },
