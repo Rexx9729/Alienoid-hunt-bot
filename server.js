@@ -25,8 +25,8 @@ const OWNER_ID = Number(process.env.OWNER_ID);
 if (
     !BOT_TOKEN ||
     !MONGO_URI ||
-    !ALIEN_DATABASE_CHANNEL_ID
-    !OWNER_ID
+    !ALIEN_DATABASE_CHANNEL_ID ||
+!OWNER_ID
 ) {
     console.error(
         '❌ Error: BOT_TOKEN, MONGO_URI or ALIEN_DATABASE_CHANNEL_ID is missing!'
