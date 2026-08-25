@@ -20,11 +20,13 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
 const ALIEN_DATABASE_CHANNEL_ID =
     process.env.ALIEN_DATABASE_CHANNEL_ID;
+const OWNER_ID = Number(process.env.OWNER_ID);
 
 if (
     !BOT_TOKEN ||
     !MONGO_URI ||
     !ALIEN_DATABASE_CHANNEL_ID
+    !OWNER_ID
 ) {
     console.error(
         '❌ Error: BOT_TOKEN, MONGO_URI or ALIEN_DATABASE_CHANNEL_ID is missing!'
@@ -159,7 +161,12 @@ bot.telegram.setMyCommands([
 bot.command('addalien', async (ctx) => {
 
     console.log('🔥 ADDALIEN COMMAND RECEIVED');
-
+    if (ctx.from.id !== OWNER_ID) {
+        return ctx.reply(
+            '❌ ACCESS DENIED\n\n' +
+            'Only the Alienoid owner can add new aliens.'
+        );
+    }
     ctx.session ??= {};
 
     ctx.session.addAlien = {
