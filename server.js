@@ -18,9 +18,17 @@ app.listen(PORT, () => {
 // Secrets
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
+const ALIEN_DATABASE_CHANNEL_ID =
+    process.env.ALIEN_DATABASE_CHANNEL_ID;
 
-if (!BOT_TOKEN || !MONGO_URI) {
-    console.error('❌ Error: BOT_TOKEN or MONGO_URI is missing!');
+if (
+    !BOT_TOKEN ||
+    !MONGO_URI ||
+    !ALIEN_DATABASE_CHANNEL_ID
+) {
+    console.error(
+        '❌ Error: BOT_TOKEN, MONGO_URI or ALIEN_DATABASE_CHANNEL_ID is missing!'
+    );
     process.exit(1);
 }
 
@@ -384,6 +392,36 @@ bot.on('photo', async (ctx, next) => {
         });
 
         await alien.save();
+        // ==================== POST TO ALIENOID DATABASE ====================
+
+const databasePost =
+`👽 <b>${generated.name}</b>
+
+⭐ <b>Rarity:</b> ${generated.rarity}
+🌌 <b>Element:</b> ${generated.element}
+
+❤️ <b>HP:</b> ${generated.maxHp}
+⚔️ <b>Base Attack:</b> ${generated.baseAttack}
+🛡️ <b>Defense:</b> ${generated.defense}
+⚡ <b>Speed:</b> ${generated.speed}
+
+🥊 <b>ATTACKS</b>
+1. ${generated.attacks[0].name} — ${generated.attacks[0].damage} DMG
+2. ${generated.attacks[1].name} — ${generated.attacks[1].damage} DMG
+3. ${generated.attacks[2].name} — ${generated.attacks[2].damage} DMG
+
+💰 <b>Kill Reward:</b> ₹${economy.killReward}
+
+🎯 <b>Spawn Threshold:</b> ${economy.spawnThreshold} hunts`;
+
+await ctx.telegram.sendPhoto(
+    ALIEN_DATABASE_CHANNEL_ID,
+    imageFileId,
+    {
+        caption: databasePost,
+        parse_mode: 'HTML'
+    }
+);
 
         const attackText = generated.attacks
             .map((attack, index) =>
