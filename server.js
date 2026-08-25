@@ -85,6 +85,55 @@ bot.use(
         defaultSession: () => ({})
     })
 );
+// ==================== ADD ALIEN SESSION CONTROL ====================
+
+const ADD_ALIEN_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+const addAlienTimers = new Map();
+
+function clearAddAlienSession(ctx) {
+    const chatId = ctx.chat?.id;
+
+    if (chatId && addAlienTimers.has(chatId)) {
+        clearTimeout(addAlienTimers.get(chatId));
+        addAlienTimers.delete(chatId);
+    }
+
+    if (ctx.session) {
+        ctx.session.addAlien = null;
+    }
+}
+
+function startAddAlienSession(ctx) {
+    const chatId = ctx.chat.id;
+
+    // Remove old timer/session
+    if (addAlienTimers.has(chatId)) {
+        clearTimeout(addAlienTimers.get(chatId));
+    }
+
+    ctx.session.addAlien = {
+        step: 'name'
+    };
+
+    const timer = setTimeout(async () => {
+        if (ctx.session?.addAlien) {
+            ctx.session.addAlien = null;
+            addAlienTimers.delete(chatId);
+
+            try {
+                await ctx.reply(
+                    '⌛ SESSION EXPIRED\n\n' +
+                    'The Add Alien session expired after 2 minutes.\n\n' +
+                    'Please use /addalien to try again.'
+                );
+            } catch (error) {
+                console.error('❌ Session expiry reply error:', error);
+            }
+        }
+    }, ADD_ALIEN_TIMEOUT);
+
+    addAlienTimers.set(chatId, timer);
+                        }
 // ==================== ALIENOID ECONOMY ====================
 
 const HUNT_COST = 20;
@@ -156,6 +205,56 @@ bot.telegram.setMyCommands([
 ], {
     scope: { type: 'all_group_chats' }
 });
+// ==================== ADD ALIEN — CANCEL ====================
+
+bot.command('cancel', async (ctx) => {
+
+    if (!ctx.session?.addAlien) {
+        return ctx.reply(
+            'ℹ️ No Add Alien operation is currently active.'
+        );
+    }
+
+    clearAddAlienSession(ctx);
+
+    await ctx.reply(
+        '❌ ADD ALIEN CANCELLED\n\n' +
+        'The current operation has been cancelled.'
+    );
+});
+// ==================== ADD ALIEN — COMMAND INTERRUPT ====================
+
+bot.use(async (ctx, next) => {
+
+    const text = ctx.message?.text;
+
+    if (
+        ctx.session?.addAlien &&
+        typeof text === 'string' &&
+        text.startsWith('/')
+    ) {
+
+        const command = text
+            .split(/\s+/)[0]
+            .toLowerCase();
+
+        // /addalien is allowed to restart the session
+        // /cancel has its own handler
+        if (
+            command !== '/addalien' &&
+            command !== '/cancel'
+        ) {
+            clearAddAlienSession(ctx);
+
+            await ctx.reply(
+                '❌ ADD ALIEN CANCELLED\n\n' +
+                `Command ${command} was used, so the current Add Alien operation was cancelled.`
+            );
+        }
+    }
+
+    return next();
+});
 // ==================== ADD ALIEN ====================
 
 bot.command('addalien', async (ctx) => {
@@ -169,9 +268,7 @@ bot.command('addalien', async (ctx) => {
     }
     ctx.session ??= {};
 
-    ctx.session.addAlien = {
-        step: 'name'
-    };
+       startAddAlienSession(ctx);
 
     await ctx.reply(
         `👽 ADD NEW ALIEN\n\n` +
@@ -465,13 +562,13 @@ await ctx.telegram.sendPhoto(
             `🗄️ Saved to MongoDB.`
         );
 
-        ctx.session.addAlien = null;
+        clearAddAlienSession(ctx);
 
     } catch (error) {
 
         console.error('❌ Add Alien Error:', error);
 
-        ctx.session.addAlien = null;
+        clearAddAlienSession(ctx);
 
         await ctx.reply(
             `❌ Failed to add alien.\n\n` +
