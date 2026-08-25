@@ -78,7 +78,11 @@ const User = mongoose.model('User', userSchema);
 
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
-bot.use(session());
+bot.use(
+    session({
+        defaultSession: () => ({})
+    })
+);
 // ==================== ALIENOID ECONOMY ====================
 
 const HUNT_COST = 20;
@@ -153,7 +157,11 @@ bot.telegram.setMyCommands([
 // ==================== ADD ALIEN ====================
 
 bot.command('addalien', async (ctx) => {
-console.log('🔥 ADDALIEN COMMAND RECEIVED');
+
+    console.log('🔥 ADDALIEN COMMAND RECEIVED');
+
+    ctx.session ??= {};
+
     ctx.session.addAlien = {
         step: 'name'
     };
