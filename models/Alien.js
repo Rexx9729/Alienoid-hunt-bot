@@ -33,15 +33,29 @@ const alienSchema = new mongoose.Schema(
                 'Rare',
                 'Legendary',
                 'Cosmic',
-                'Alien X'
+                'God'
             ]
         },
 
         element: {
-            type: String,
-            required: true,
-            trim: true
-        },
+    type: String,
+    required: true,
+    enum: [
+        'Fire',
+        'Water',
+        'Earth',
+        'Rock',
+        'Ice',
+        'Acid',
+        'Electric',
+        'Wind',
+        'Physical',
+        'Psychic',
+        'Gravity',
+        'Void'
+    ],
+    trim: true
+},
 
         // Telegram private database channel image
         imageFileId: {
