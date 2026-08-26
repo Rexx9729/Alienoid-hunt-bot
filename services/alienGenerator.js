@@ -94,11 +94,21 @@ const ELEMENT_PROFILES = {
         defense: [28, 36],
         speed: [12, 20]
     },
+        Nuclear: {
+        defense: [26, 35],
+        speed: [22, 32]
+    },
+
+    Plasma: {
+        defense: [14, 22],
+        speed: [32, 44]
+},
 
     Void: {
         defense: [30, 40],
         speed: [28, 40]
     }
+    
 };
 
 
@@ -442,7 +452,54 @@ const ATTACK_POOLS = {
             'World Collapse'
         ]
     },
+        Nuclear: {
+        first: [
+            'Nuclear Shot',
+            'Atomic Bolt',
+            'Radiation Blast',
+            'Nuclear Pulse',
+            'Atomic Strike',
+            'Radioactive Burst',
+            'Fission Beam'
+        ],
 
+        second: [
+            'Nuclear Burst',
+            'Atomic Crash',
+            'Radiation Wave',
+            'Fission Break',
+            'Nuclear Impact',
+            'Atomic Overload',
+            'Radiation Crush'
+        ],
+
+        third: [
+            'Nuclear Cataclysm',
+            'Atomic Apocalypse',
+            'Nuclear Meltdown',
+            'Fission Collapse',
+            'Radiation Annihilation',
+            'Atomic Devastation',
+            'Nuclear Extinction'
+        ]
+    },
+    
+    Plasma: {
+        first: [
+            'Plasma Beam',
+            'Photon Beam'
+        ],
+
+        second: [
+            'Plasma Ray',
+            'Photon Burst'
+        ],
+
+        third: [
+            'Plasma Cannon',
+            'Plasma Annihilation'
+        ]
+    },
 
     Void: {
         first: [
