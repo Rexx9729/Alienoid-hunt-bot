@@ -1094,6 +1094,316 @@ bot.command('hunt', async (ctx) => {
         );
     }
 });
+// ==================== HUNT — RUN ====================
+
+bot.action('hunt_run', async (ctx) => {
+
+    if (!ctx.session?.hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ No active hunt.'
+        );
+    }
+
+    ctx.session.hunt = null;
+
+    await ctx.answerCbQuery(
+        '🏃 You escaped!'
+    );
+
+    await ctx.editMessageText(
+        `🏃 HUNT CANCELLED\n\n` +
+        `You ran away from the wild alien.\n\n` +
+        `Use /hunt to search again.`
+    );
+});
+// ==================== HUNT — SCAN MENU ====================
+
+bot.action('hunt_scan', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ No active hunt.'
+        );
+    }
+
+    // Create scan counter for this hunt
+    if (typeof hunt.scanAttempts !== 'number') {
+        hunt.scanAttempts = 0;
+    }
+
+    // Maximum 3 scan attempts per hunt
+    if (hunt.scanAttempts >= 3) {
+        return ctx.answerCbQuery(
+            '❌ Maximum 3 scans used in this hunt.',
+            { show_alert: true }
+        );
+    }
+
+    const alien =
+        await Alien.findById(hunt.wildAlienId);
+
+    if (!alien) {
+        ctx.session.hunt = null;
+
+        return ctx.answerCbQuery(
+            '⚠️ Wild alien no longer exists.',
+            { show_alert: true }
+        );
+    }
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        `🔍 ALIEN SCAN\n\n` +
+
+        `👽 ${alien.name}\n` +
+        `🌌 Element: ${alien.element}\n` +
+        `⭐ Rarity: ${alien.rarity}\n\n` +
+
+        `🔎 Scans used: ${hunt.scanAttempts}/3\n\n` +
+
+        `Choose a scan:`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '🔎 Normal Scan',
+                            callback_data: 'hunt_scan_normal'
+                        }
+                    ],
+                    [
+                        {
+                            text: '⚠️ S.Scan',
+                            callback_data: 'hunt_scan_super'
+                        }
+                    ],
+                    [
+                        {
+                            text: '☣️ M.Scan',
+                            callback_data: 'hunt_scan_mega'
+                        }
+                    ],
+                    [
+                        {
+                            text: '☢️ A.Scan',
+                            callback_data: 'hunt_scan_absolute'
+                        }
+                    ],
+                    [
+                        {
+                            text: '🔙 Back',
+                            callback_data: 'hunt_scan_back'
+                        }
+                    ]
+                ]
+            }
+        }
+    );
+});
+// ==================== HUNT — SCAN BACK ====================
+
+bot.action('hunt_scan_back', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ No active hunt.'
+        );
+    }
+
+    const alien =
+        await Alien.findById(hunt.wildAlienId);
+
+    if (!alien) {
+        ctx.session.hunt = null;
+
+        return ctx.answerCbQuery(
+            '⚠️ Wild alien no longer exists.'
+        );
+    }
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        `👽 WILD ALIEN SPOTTED!\n\n` +
+
+        `👽 ${alien.name}\n` +
+        `⭐ Rarity: ${alien.rarity}\n` +
+        `🌌 Element: ${alien.element}\n\n` +
+
+        `❤️ HP: ${hunt.currentHp}/${hunt.maxHp}\n\n` +
+
+        `What do you want to do?`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '⚔️ Hunt',
+                            callback_data: 'hunt_start'
+                        },
+                        {
+                            text: '🏃 Run',
+                            callback_data: 'hunt_run'
+                        },
+                        {
+                            text: '🔍 Scan',
+                            callback_data: 'hunt_scan'
+                        }
+                    ]
+                ]
+            }
+        }
+    );
+});
+// ==================== HUNT — SCAN ATTEMPT ====================
+
+bot.action(
+    /^hunt_scan_(normal|super|mega|absolute)$/,
+    async (ctx) => {
+
+        try {
+
+            const hunt = ctx.session?.hunt;
+
+            if (!hunt) {
+                return ctx.answerCbQuery(
+                    '⚠️ No active hunt.',
+                    { show_alert: true }
+                );
+            }
+
+            // Maximum 3 scan attempts per hunt
+            if (hunt.scanAttempts >= 3) {
+                return ctx.answerCbQuery(
+                    '❌ Maximum 3 scans used in this hunt.',
+                    { show_alert: true }
+                );
+            }
+
+            const scanType = ctx.match[1];
+
+            const user =
+                await User.findOne({
+                    userId: ctx.from.id
+                });
+
+            if (!user) {
+                return ctx.answerCbQuery(
+                    '⚠️ Please send /start first.',
+                    { show_alert: true }
+                );
+            }
+
+            // Map scan type to inventory field
+            const inventoryMap = {
+                normal: null,
+                super: 'superScan',
+                mega: 'megaScan',
+                absolute: 'absoluteScan'
+            };
+
+            const inventoryField =
+                inventoryMap[scanType];
+
+            // Normal Scan does not use inventory
+            if (inventoryField) {
+
+                if (
+                    !user.inventory ||
+                    user.inventory[inventoryField] <= 0
+                ) {
+                    return ctx.answerCbQuery(
+                        '❌ You do not have this scan.',
+                        { show_alert: true }
+                    );
+                }
+
+                // Consume scan
+                user.inventory[inventoryField] -= 1;
+
+                await user.save();
+            }
+
+            // Count this attempt
+            hunt.scanAttempts += 1;
+
+            await ctx.answerCbQuery();
+
+            const scanName = {
+                normal: '🔎 Normal Scan',
+                super: '⚠️ Super Scan',
+                mega: '☣️ Mega Scan',
+                absolute: '☢️ Absolute Scan'
+            };
+
+            await ctx.editMessageText(
+                `${scanName[scanType]}\n\n` +
+                `👽 ${hunt.wildAlienName}\n\n` +
+                `🔍 Scan attempt: ` +
+                `${hunt.scanAttempts}/3\n\n` +
+                `Choose another scan or go back.`,
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '🔎 Normal Scan',
+                                    callback_data:
+                                        'hunt_scan_normal'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '⚠️ S.Scan',
+                                    callback_data:
+                                        'hunt_scan_super'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '☣️ M.Scan',
+                                    callback_data:
+                                        'hunt_scan_mega'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '☢️ A.Scan',
+                                    callback_data:
+                                        'hunt_scan_absolute'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '🔙 Back',
+                                    callback_data:
+                                        'hunt_scan_back'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Scan Error:',
+                error
+            );
+
+            return ctx.answerCbQuery(
+                '❌ Scan failed.',
+                { show_alert: true }
+            );
+        }
+    }
+);
 // ==================== DAILY REWARD ====================
 
 bot.command('daily', async (ctx) => {
