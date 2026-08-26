@@ -73,7 +73,7 @@ function getPlayerBattleAlien(alien) {
         level: Number(alien.level || 1),
 
         maxHp: Number(alien.maxHp || 1),
-        hp: Number(
+        currentHp: Number(
             alien.hp || alien.maxHp || 1
         ),
 
