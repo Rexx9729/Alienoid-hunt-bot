@@ -373,12 +373,18 @@ function registerHunt(bot, User) {
             }
 
             // Deduct hunt cost
-            user.rupees -= HUNT_COST;
-            await user.save();
+user.rupees -= HUNT_COST;
 
-            // Spawn wild alien
-            const spawned =
-                await spawnWildAlien();
+// Progress total hunt count separately
+user.hunts += 1;
+user.huntProgress =
+    (user.huntProgress || 0) + 1;
+
+await user.save();
+
+// Spawn wild alien according to progression
+const spawned =
+    await spawnWildAlien(user.huntProgress);
 
             ctx.session.hunt = {
                 stage: 'spawned',
