@@ -1785,6 +1785,209 @@ bot.command('rpay', async (ctx) => {
         );
     }
 });
+
+// ==================== ALIEN GIFT ====================
+
+bot.command('agive', async (ctx) => {
+
+    try {
+
+        const senderId = ctx.from.id;
+
+        // Must reply to another player's message
+        if (!ctx.message.reply_to_message) {
+            return ctx.reply(
+                '⚠️ Reply to a player\'s message and use:\n\n' +
+                '/agive <alien name>\n\n' +
+                'Example:\n' +
+                '/agive Heatblast'
+            );
+        }
+
+        const receiverId =
+            ctx.message.reply_to_message.from.id;
+
+        // Prevent gifting to yourself
+        if (senderId === receiverId) {
+            return ctx.reply(
+                '❌ You cannot gift an alien to yourself.'
+            );
+        }
+
+        // Get alien name
+        const args =
+            ctx.message.text
+                .trim()
+                .split(/\s+/);
+
+        const alienName =
+            args.slice(1).join(' ').trim();
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Enter the alien name.\n\n' +
+                'Example:\n' +
+                '/agive Heatblast'
+            );
+        }
+
+        // Find both users
+        const sender =
+            await User.findOne({
+                userId: senderId
+            });
+
+        const receiver =
+            await User.findOne({
+                userId: receiverId
+            });
+
+        if (!sender) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (!receiver) {
+            return ctx.reply(
+                '❌ This player has not started Alienoid Hunt yet.'
+            );
+        }
+
+        if (
+            !sender.aliens ||
+            sender.aliens.length === 0
+        ) {
+            return ctx.reply(
+                '🎒 You do not have any aliens to gift.'
+            );
+        }
+
+        // Find ONE matching alien
+        const alienIndex =
+            sender.aliens.findIndex(
+                alien =>
+                    String(
+                        alien.nickname ||
+                        alien.name ||
+                        ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase()
+            );
+
+        if (alienIndex === -1) {
+            return ctx.reply(
+                `❌ You don't have "${alienName}" in your bag.`
+            );
+        }
+
+        // Remove exactly ONE alien
+        const giftedAlien =
+            sender.aliens[alienIndex];
+
+        sender.aliens.splice(
+            alienIndex,
+            1
+        );
+
+        // If this alien was in sender's deck,
+        // remove it from the deck too.
+        if (sender.deck?.length) {
+
+            sender.deck =
+                sender.deck.filter(
+                    id =>
+                        id !== giftedAlien.alienId
+                );
+        }
+
+        // Create a new unique alien ID
+        // so sender and receiver never share the same instance ID.
+        const giftedAlienData = {
+
+            alienId:
+                new mongoose.Types.ObjectId().toString(),
+
+            name:
+                giftedAlien.name ||
+                giftedAlien.nickname ||
+                'Unknown Alien',
+
+            nickname:
+                giftedAlien.nickname ||
+                giftedAlien.name ||
+                'Unknown Alien',
+
+            rarity:
+                giftedAlien.rarity,
+
+            star:
+                Number(
+                    giftedAlien.star || 0
+                ),
+
+            level:
+                Number(
+                    giftedAlien.level || 1
+                ),
+
+            hp:
+                giftedAlien.hp,
+
+            maxHp:
+                giftedAlien.maxHp,
+
+            atk:
+                giftedAlien.atk,
+
+            def:
+                giftedAlien.def,
+
+            element:
+                giftedAlien.element,
+
+            fileId:
+                giftedAlien.fileId || ''
+        };
+
+        receiver.aliens.push(
+            giftedAlienData
+        );
+
+        // Save both users
+        await sender.save();
+        await receiver.save();
+
+        const senderName =
+            sender.username ||
+            ctx.from.first_name ||
+            'Hunter';
+
+        const receiverName =
+            receiver.username ||
+            ctx.message.reply_to_message
+                .from.first_name ||
+            'Hunter';
+
+        return ctx.reply(
+            `🎉 "${senderName}" Gifted ` +
+            `"${giftedAlienData.nickname}" ` +
+            `to "${receiverName}"\n` +
+            `Successfully!!`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /agive error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Alien gift failed due to a temporary error.'
+        );
+    }
+});
 // ==================== HELP MENU ====================
 
 const helpKeyboard = {
