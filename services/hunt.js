@@ -1447,7 +1447,7 @@ bot.action('hunt_battle_back', async (ctx) => {
     );
 });
 
-
+}
 // ==================== EXPORT ====================
 
 module.exports = {
