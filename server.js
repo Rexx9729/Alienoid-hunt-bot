@@ -101,7 +101,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
-const { registerHunt } = require('./services/hunt');
+
 
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
