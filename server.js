@@ -155,7 +155,7 @@ function startAddAlienSession(ctx) {
                         }
 // ==================== ALIENOID ECONOMY ====================
 
-const HUNT_COST = 20;
+
 
 const ALIEN_ECONOMY = {
     Basic: {
