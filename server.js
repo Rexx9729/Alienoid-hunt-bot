@@ -705,7 +705,272 @@ bot.command(['bag', 'aliens'], async (ctx) => {
     msg += `\nTotal Aliens: ${user.aliens.length}`;
     ctx.reply(msg);
 });
+// ==================== ALIEN DECK — SET / OUT ====================
 
+// /set alienname
+// /set alienname 1s
+// /set alienname 2s
+// /set alienname 3s
+
+bot.command('set', async (ctx) => {
+    try {
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply('⚠️ Please send /start first!');
+        }
+
+        if (!user.aliens || user.aliens.length === 0) {
+            return ctx.reply(
+                '🎒 Your alien bag is empty!'
+            );
+        }
+
+        // Maximum 4 aliens in deck
+        if (user.deck.length >= 4) {
+            return ctx.reply(
+                '❌ Your deck is full!\n\n' +
+                'Maximum 4 aliens can be set.'
+            );
+        }
+
+        const input = ctx.message.text
+            .trim()
+            .replace(/^\/set(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/set Atomix\n' +
+                '/set Atomix 1s\n' +
+                '/set Atomix 2s\n' +
+                '/set Atomix 3s'
+            );
+        }
+
+        // Check for star suffix
+        let star = 0;
+        let alienName = input;
+
+        const starMatch = input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+            star = Number(starMatch[1].charAt(0));
+            alienName = input
+                .replace(/\s+[123]s$/i, '')
+                .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // Find alien by name/nickname + exact star
+        const alien = user.aliens.find(a => {
+
+            const nameMatch =
+                String(a.name || '').toLowerCase() ===
+                alienName.toLowerCase();
+
+            const nicknameMatch =
+                String(a.nickname || '').toLowerCase() ===
+                alienName.toLowerCase();
+
+            return (
+                (nameMatch || nicknameMatch) &&
+                Number(a.star || 0) === star
+            );
+        });
+
+        if (!alien) {
+            const stars = star > 0
+                ? `${'⭐'.repeat(star)} `
+                : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} was not found in your bag.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        // Alien must have an ID
+        if (!alien.alienId) {
+            return ctx.reply(
+                '❌ This alien is missing its Alien ID.\n\n' +
+                'This alien cannot be added to the deck.'
+            );
+        }
+
+        // Prevent same alien instance from being added twice
+        if (user.deck.includes(alien.alienId)) {
+            return ctx.reply(
+                `❌ ${alien.star > 0 ? `${'⭐'.repeat(alien.star)} ` : ''}` +
+                `${alien.nickname || alien.name} is already in your deck.`
+            );
+        }
+
+        // Add alien ID to deck
+        user.deck.push(alien.alienId);
+
+        await user.save();
+
+        const stars = alien.star > 0
+            ? `${'⭐'.repeat(alien.star)} `
+            : '';
+
+        return ctx.reply(
+            `✅ ALIEN SET!\n\n` +
+            `${stars}${alien.nickname || alien.name}\n` +
+            `⭐ Rarity: ${alien.rarity}\n` +
+            `🌌 Element: ${alien.element}\n\n` +
+            `🛸 Deck: ${user.deck.length}/4`
+        );
+
+    } catch (error) {
+        console.error('❌ /set error:', error);
+
+        return ctx.reply(
+            '❌ Something went wrong while setting your alien.'
+        );
+    }
+});
+
+
+// ==================== REMOVE ALIEN FROM DECK ====================
+
+// /out alienname
+// /out alienname 1s
+// /out alienname 2s
+// /out alienname 3s
+
+bot.command('out', async (ctx) => {
+    try {
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply('⚠️ Please send /start first!');
+        }
+
+        if (!user.deck || user.deck.length === 0) {
+            return ctx.reply(
+                '🛸 Your deck is already empty!'
+            );
+        }
+
+        // Minimum 1 alien must remain
+        if (user.deck.length === 1) {
+            return ctx.reply(
+                '❌ Your deck must contain at least 1 alien.\n\n' +
+                'You cannot remove your last deck alien.'
+            );
+        }
+
+        const input = ctx.message.text
+            .trim()
+            .replace(/^\/out(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/out Atomix\n' +
+                '/out Atomix 1s\n' +
+                '/out Atomix 2s\n' +
+                '/out Atomix 3s'
+            );
+        }
+
+        // Check for star suffix
+        let star = 0;
+        let alienName = input;
+
+        const starMatch = input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+            star = Number(starMatch[1].charAt(0));
+            alienName = input
+                .replace(/\s+[123]s$/i, '')
+                .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // Find the requested alien inside the deck
+        let deckIndex = -1;
+        let alien = null;
+
+        for (let i = 0; i < user.deck.length; i++) {
+
+            const deckAlienId = user.deck[i];
+
+            const foundAlien = user.aliens.find(
+                a => a.alienId === deckAlienId
+            );
+
+            if (!foundAlien) continue;
+
+            const nameMatch =
+                String(foundAlien.name || '').toLowerCase() ===
+                alienName.toLowerCase();
+
+            const nicknameMatch =
+                String(foundAlien.nickname || '').toLowerCase() ===
+                alienName.toLowerCase();
+
+            if (
+                (nameMatch || nicknameMatch) &&
+                Number(foundAlien.star || 0) === star
+            ) {
+                deckIndex = i;
+                alien = foundAlien;
+                break;
+            }
+        }
+
+        if (deckIndex === -1 || !alien) {
+            const stars = star > 0
+                ? `${'⭐'.repeat(star)} `
+                : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} is not in your deck.`
+            );
+        }
+
+        // Remove only from deck
+        user.deck.splice(deckIndex, 1);
+
+        await user.save();
+
+        const stars = alien.star > 0
+            ? `${'⭐'.repeat(alien.star)} `
+            : '';
+
+        return ctx.reply(
+            `✅ ALIEN REMOVED FROM DECK!\n\n` +
+            `${stars}${alien.nickname || alien.name}\n\n` +
+            `🛸 Deck: ${user.deck.length}/4`
+        );
+
+    } catch (error) {
+        console.error('❌ /out error:', error);
+
+        return ctx.reply(
+            '❌ Something went wrong while removing your alien.'
+        );
+    }
+});
 // ==================== DAILY REWARD ====================
 
 bot.command('daily', async (ctx) => {
