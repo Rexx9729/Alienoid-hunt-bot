@@ -977,6 +977,123 @@ bot.command('out', async (ctx) => {
         );
     }
 });
+// ==================== HUNT — SPAWN ====================
+
+bot.command('hunt', async (ctx) => {
+
+    try {
+
+        // Hunt is DM only
+        if (ctx.chat.type !== 'private') {
+            return ctx.reply(
+                '⚠️ /hunt can only be used in bot DM.'
+            );
+        }
+
+        const userId = ctx.from.id;
+
+        const user =
+            await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        // Check Rupees
+        if (user.rupees < HUNT_COST) {
+            return ctx.reply(
+                `❌ Not enough Rupees!\n\n` +
+                `💰 Your Balance: ₹${user.rupees}\n` +
+                `🎯 Hunt Cost: ₹${HUNT_COST}`
+            );
+        }
+
+        // Deck required
+        if (!user.deck || user.deck.length === 0) {
+            return ctx.reply(
+                '⚠️ Your alien deck is empty!\n\n' +
+                'Use /set <alienname> first.'
+            );
+        }
+
+        // ==================== PROGRESSION ====================
+
+        user.hunts += 1;
+
+        user.huntProgress =
+            (user.huntProgress || 0) + 1;
+
+        // Pay hunt cost
+        user.rupees -= HUNT_COST;
+
+        await user.save();
+
+        // ==================== SPAWN ====================
+
+        const wildAlien =
+            await spawnWildAlien(
+                user.huntProgress
+            );
+
+        // ==================== HUNT SESSION ====================
+
+        ctx.session ??= {};
+
+        ctx.session.hunt = {
+            wildAlienId: wildAlien._id.toString(),
+            wildAlienName: wildAlien.name,
+            rarity: wildAlien.rarity,
+            currentHp: wildAlien.maxHp,
+            maxHp: wildAlien.maxHp,
+            huntProgress: user.huntProgress
+        };
+
+        await ctx.reply(
+            `👽 WILD ALIEN SPOTTED!\n\n` +
+
+            `👽 ${wildAlien.name}\n` +
+            `⭐ Rarity: ${wildAlien.rarity}\n` +
+            `🌌 Element: ${wildAlien.element}\n\n` +
+
+            `❤️ HP: ${wildAlien.maxHp}\n\n` +
+
+            `🎯 Hunt Progress: ${user.huntProgress}\n\n` +
+
+            `What do you want to do?`,
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '⚔️ Hunt',
+                                callback_data: 'hunt_start'
+                            },
+                            {
+                                text: '🏃 Run',
+                                callback_data: 'hunt_run'
+                            },
+                            {
+                                text: '🔍 Scan',
+                                callback_data: 'hunt_scan'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error('❌ Hunt Spawn Error:', error);
+
+        return ctx.reply(
+            '❌ Failed to start hunt.\n\n' +
+            `Error: ${error.message}`
+        );
+    }
+});
 // ==================== DAILY REWARD ====================
 
 bot.command('daily', async (ctx) => {
