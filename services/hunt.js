@@ -881,6 +881,11 @@ bot.action('hunt_scan_back', async (ctx) => {
     bot.action('hunt_start_fight', async (ctx) => {
 
         const hunt = ctx.session?.hunt;
+        if (!hunt) {
+    return ctx.answerCbQuery(
+        '⚠️ Hunt session expired.'
+    );
+                }
 
         // Resume paused battle
 if (
