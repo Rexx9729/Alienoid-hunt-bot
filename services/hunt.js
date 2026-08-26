@@ -418,6 +418,114 @@ async function captureWildAlien(ctx, User, scanType) {
         }
     );
 }
+// ==================== WILD ALIEN DEFEATED ====================
+
+async function finishWildDefeated(ctx) {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt || !hunt.wildAlien) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.',
+            { show_alert: true }
+        );
+    }
+
+    const wild = hunt.wildAlien;
+
+    try {
+
+        // Get original alien from database
+        const alien = await Alien.findById(
+            wild.alienId
+        );
+
+        if (!alien) {
+
+            clearHuntSession(ctx);
+
+            return ctx.editMessageText(
+                '❌ Wild alien data could not be found.\n\n' +
+                'The hunt has ended.'
+            );
+        }
+
+        // Calculate reward using existing Hunt Engine
+        const reward =
+            getHuntReward(alien);
+
+        // Get user
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
+
+        if (!user) {
+
+            clearHuntSession(ctx);
+
+            return ctx.editMessageText(
+                '❌ User not found.\n\n' +
+                'The hunt has ended.'
+            );
+        }
+
+        // Give Rupee reward
+        user.rupees += reward;
+
+        // IMPORTANT:
+        // Defeat does NOT reset huntProgress.
+        // Only successful capture resets it.
+
+        await user.save();
+
+        await ctx.answerCbQuery(
+            '🎉 Wild alien defeated!',
+            { show_alert: true }
+        );
+
+        await ctx.editMessageText(
+            `⚔️ <b>WILD ALIEN DEFEATED!</b>\n\n` +
+
+            `👽 <b>${wild.name}</b>\n` +
+            `⭐ Rarity: <b>${wild.rarity}</b>\n` +
+            `🌌 Element: <b>${wild.element}</b>\n\n` +
+
+            `💰 Hunt Reward: <b>+₹${reward}</b>\n` +
+            `💵 Balance: <b>₹${user.rupees}</b>\n\n` +
+
+            `📈 Hunt Progress: <b>${user.huntProgress || 0}</b>\n` +
+            `➡️ Progress continues.\n\n` +
+
+            `🏁 Hunt completed.`
+        );
+
+        // End this hunt only.
+        // huntProgress remains in database.
+        clearHuntSession(ctx);
+
+    } catch (error) {
+
+        console.error(
+            '❌ finishWildDefeated error:',
+            error
+        );
+
+        clearHuntSession(ctx);
+
+        try {
+            await ctx.editMessageText(
+                '❌ Reward processing failed.\n\n' +
+                'The hunt has been ended safely.'
+            );
+        } catch (editError) {
+            console.error(
+                '❌ Hunt defeat message error:',
+                editError
+            );
+        }
+    }
+}
 // ==================== REGISTER HUNT ====================
 
 function registerHunt(bot, User) {
