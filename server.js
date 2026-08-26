@@ -3,6 +3,21 @@ const mongoose = require('mongoose');
 const express = require('express');
 const { generateAlienStats } = require('./services/alienGenerator');
 const Alien = require('./models/Alien');
+const {
+    spawnWildAlien,
+    getCaptureChance,
+    attemptCapture,
+    getHuntReward,
+    HUNT_COST
+} = require('./services/huntEngine');
+
+const {
+    getFirstTurn,
+    calculateDamage,
+    getIncomingDamageMultiplier,
+    calculateHealerxRecovery,
+    createHpBar
+} = require('./services/battleEngine');
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +75,10 @@ const userSchema = new mongoose.Schema({
         megaScan: { type: Number, default: 0 },
         absoluteScan: { type: Number, default: 0 }
     },
+    deck: {
+    type: [String],
+    default: []
+        } 
     aliens: [{
         alienId: String,
         name: String,
