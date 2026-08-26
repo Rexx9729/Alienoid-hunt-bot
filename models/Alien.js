@@ -52,7 +52,9 @@ const alienSchema = new mongoose.Schema(
         'Physical',
         'Psychic',
         'Gravity',
-        'Void'
+        'Void',
+        'Nuclear',
+        'Plasma'
     ],
     trim: true
 },
