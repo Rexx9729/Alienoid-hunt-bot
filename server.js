@@ -18,6 +18,7 @@ const {
     calculateHealerxRecovery,
     createHpBar
 } = require('./services/battleEngine');
+const { registerHunt } = require('./services/hunt');
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -96,7 +97,8 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
-
+const { registerHunt } = require('./services/hunt');
+registerHunt(bot, User);
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(
