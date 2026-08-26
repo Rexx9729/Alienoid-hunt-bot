@@ -1,5 +1,5 @@
 // ==================== ALIENOID HUNT FLOW ====================
-
+const Alien = require('../models/Alien');
 const {
     HUNT_COST,
     spawnWildAlien,
