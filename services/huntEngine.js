@@ -125,17 +125,67 @@ async function getRandomAlien() {
     return aliens[randomIndex];
 }
 
+// ==================== SPAWN RARITY FROM PROGRESSION ====================
 
-// ==================== SPAWN ALIEN ====================
-//
-// First version:
-// Every hunt selects a valid database alien.
-// Spawn-threshold progression will be connected
-// to the user's hunt counter in the next layer.
+function getSpawnRarity(huntProgress) {
 
-async function spawnWildAlien() {
+    if (huntProgress >= SPAWN_THRESHOLDS.God) {
+        return 'God';
+    }
 
-    return getRandomAlien();
+    if (huntProgress >= SPAWN_THRESHOLDS.Cosmic) {
+        return 'Cosmic';
+    }
+
+    if (huntProgress >= SPAWN_THRESHOLDS.Legendary) {
+        return 'Legendary';
+    }
+
+    if (huntProgress >= SPAWN_THRESHOLDS.Rare) {
+        return 'Rare';
+    }
+
+    if (huntProgress >= SPAWN_THRESHOLDS.Common) {
+        return 'Common';
+    }
+
+    return 'Basic';
+}
+
+
+// ==================== GET ALIEN OF RARITY ====================
+
+async function getRandomAlien(rarity) {
+
+    const aliens =
+        await Alien.find({ rarity });
+
+    if (!aliens.length) {
+        throw new Error(
+            `No ${rarity} aliens are available in the database.`
+        );
+    }
+
+    const randomIndex =
+        Math.floor(
+            Math.random() * aliens.length
+        );
+
+    return aliens[randomIndex];
+}
+
+
+// ==================== SPAWN WILD ALIEN ====================
+
+async function spawnWildAlien(huntProgress) {
+
+    const rarity =
+        getSpawnRarity(huntProgress);
+
+    const alien =
+        await getRandomAlien(rarity);
+
+    return alien;
 }
 
 
@@ -161,6 +211,7 @@ module.exports = {
     HUNT_COST,
     SPAWN_THRESHOLDS,
     CAPTURE_RATES,
+    getSpawnRarity,
     getBaseCaptureRate,
     getCaptureChance,
     attemptCapture,
