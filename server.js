@@ -709,6 +709,13 @@ bot.start(async (ctx) => {
         }
     );
     }
+    else {
+    return ctx.reply(
+        `🔱HELLO ${username} Welcome to Alienoid\n` +
+        `How can I help you?\n` +
+        `Type /for help !!`
+    );
+            }
     });
 
 bot.command(['profile', 'me'], async (ctx) => {
