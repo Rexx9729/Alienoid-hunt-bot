@@ -979,7 +979,7 @@ bot.command('out', async (ctx) => {
 });
 // ==================== HUNT — SPAWN ====================
 
-bot.command('hunt', async (ctx) => {
+/*bot.command('hunt', async (ctx) => {
 
     try {
 
@@ -1403,7 +1403,7 @@ bot.action(
             );
         }
     }
-);
+);*/
 // ==================== DAILY REWARD ====================
 
 bot.command('daily', async (ctx) => {
