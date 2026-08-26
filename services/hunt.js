@@ -305,7 +305,119 @@ function buildScanMessage(hunt) {
     );
 }
 
+// ==================== CAPTURE SUCCESS ====================
 
+async function captureWildAlien(ctx, User, scanType) {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.',
+            { show_alert: true }
+        );
+    }
+
+    const wild = hunt.wildAlien;
+
+    const user =
+        await User.findOne({
+            userId: ctx.from.id
+        });
+
+    if (!user) {
+        return ctx.answerCbQuery(
+            '⚠️ User not found.',
+            { show_alert: true }
+        );
+    }
+
+    // Calculate final capture chance using existing Hunt Engine
+    const chance =
+        getCaptureChance(
+            scanType,
+            wild.rarity,
+            wild.maxHp,
+            wild.currentHp
+        );
+
+    const success =
+        attemptCapture(chance);
+
+    // ==================== CAPTURE SUCCESS ====================
+
+    if (success) {
+
+        user.aliens.push({
+            alienId: wild.alienId,
+            name: wild.name,
+            nickname: '',
+            rarity: wild.rarity,
+            star: 0,
+            level: 1,
+
+            hp: wild.maxHp,
+            maxHp: wild.maxHp,
+
+            atk: wild.baseAttack,
+            def: wild.defense,
+
+            element: wild.element,
+
+            fileId: wild.imageFileId || ''
+        });
+
+        // SUCCESS = RESET PROGRESSION
+        user.huntProgress = 0;
+
+        await user.save();
+
+        await ctx.answerCbQuery(
+            '🎉 CAPTURE SUCCESS!',
+            { show_alert: true }
+        );
+
+        await ctx.editMessageText(
+            `🎉 <b>ALIEN CAPTURED!</b>\n\n` +
+
+            `👽 <b>${wild.name}</b>\n` +
+            `⭐ Rarity: ${wild.rarity}\n` +
+            `🌌 Element: ${wild.element}\n\n` +
+
+            `🔍 Scan: ${scanType}\n` +
+            `🎯 Capture Chance: ${chance}%\n\n` +
+
+            `🔥 Hunt progression has been reset.\n` +
+            `📈 Progress: 0`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+        clearHuntSession(ctx);
+
+        return;
+    }
+
+    // ==================== CAPTURE FAILED ====================
+
+    await ctx.answerCbQuery(
+        '❌ Capture failed.',
+        { show_alert: true }
+    );
+
+    await ctx.editMessageText(
+        buildScanMessage(hunt) +
+        `\n\n❌ <b>Capture failed.</b>\n` +
+        `🎯 Capture Chance: <b>${chance}%</b>\n\n` +
+        `The wild alien escaped the scan.`,
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getScanKeyboard(user, hunt)
+        }
+    );
+}
 // ==================== REGISTER HUNT ====================
 
 function registerHunt(bot, User) {
@@ -443,7 +555,164 @@ const spawned =
         }
     });
 
+// ==================== SCAN MENU ====================
 
+bot.action('hunt_scan', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.'
+        );
+    }
+
+    if (hunt.scansUsed >= MAX_SCANS_PER_HUNT) {
+        return ctx.answerCbQuery(
+            '❌ You have already used all 3 scans for this hunt.',
+            { show_alert: true }
+        );
+    }
+
+    const user =
+        await User.findOne({
+            userId: ctx.from.id
+        });
+
+    if (!user) {
+        return ctx.answerCbQuery(
+            '⚠️ User not found.',
+            { show_alert: true }
+        );
+    }
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        buildScanMessage(hunt),
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getScanKeyboard(user, hunt)
+        }
+    );
+});
+    // ==================== SCAN ATTEMPT ====================
+
+bot.action(
+    /^hunt_scan_(Normal|Super|Mega|Absolute)$/,
+    async (ctx) => {
+
+        try {
+
+            const hunt = ctx.session?.hunt;
+
+            if (!hunt) {
+                return ctx.answerCbQuery(
+                    '⚠️ Hunt session expired.',
+                    { show_alert: true }
+                );
+            }
+
+            // FINAL RULE: maximum 3 scans per hunt
+            if (hunt.scansUsed >= MAX_SCANS_PER_HUNT) {
+                return ctx.answerCbQuery(
+                    '❌ Maximum 3 scans used in this hunt.',
+                    { show_alert: true }
+                );
+            }
+
+            const scanType =
+                ctx.match[1];
+
+            const user =
+                await User.findOne({
+                    userId: ctx.from.id
+                });
+
+            if (!user) {
+                return ctx.answerCbQuery(
+                    '⚠️ User not found.',
+                    { show_alert: true }
+                );
+            }
+
+            // ====================
+            // CHECK SCAN INVENTORY
+            // ====================
+
+            const inventoryKey =
+                getScanInventoryKey(scanType);
+
+            if (inventoryKey) {
+
+                const amount =
+                    Number(
+                        user.inventory?.[inventoryKey] || 0
+                    );
+
+                if (amount <= 0) {
+                    return ctx.answerCbQuery(
+                        `❌ You don't have a ${scanType} Scan.`,
+                        { show_alert: true }
+                    );
+                }
+
+                // Consume scan
+                user.inventory[inventoryKey] =
+                    amount - 1;
+            }
+
+            // One attempt consumed
+            hunt.scansUsed += 1;
+
+            await user.save();
+
+            // Existing Hunt Engine handles
+            // base rate + HP damage bonus.
+            await captureWildAlien(
+                ctx,
+                User,
+                scanType
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Scan/Capture error:',
+                error
+            );
+
+            return ctx.answerCbQuery(
+                '❌ Scan failed. Please try again.',
+                { show_alert: true }
+            );
+        }
+    }
+);
+    // ==================== SCAN BACK ====================
+
+bot.action('hunt_scan_back', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.'
+        );
+    }
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        buildHuntMessage(hunt),
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getMainHuntKeyboard()
+        }
+    );
+});
     // ==================== RUN ====================
 
     bot.action('hunt_run', async (ctx) => {
