@@ -105,26 +105,6 @@ function attemptCapture(chance) {
 
 
 // ==================== RANDOM WILD ALIEN ====================
-
-async function getRandomAlien() {
-
-    const aliens =
-        await Alien.find({});
-
-    if (!aliens.length) {
-        throw new Error(
-            'No aliens are available in the database.'
-        );
-    }
-
-    const randomIndex =
-        Math.floor(
-            Math.random() * aliens.length
-        );
-
-    return aliens[randomIndex];
-}
-
 // ==================== SPAWN RARITY FROM PROGRESSION ====================
 
 function getSpawnRarity(huntProgress) {
