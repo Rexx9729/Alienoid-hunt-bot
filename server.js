@@ -78,7 +78,7 @@ const userSchema = new mongoose.Schema({
     deck: {
     type: [String],
     default: []
-        } 
+        },
     aliens: [{
         alienId: String,
         name: String,
