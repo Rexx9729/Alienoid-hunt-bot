@@ -819,7 +819,7 @@ bot.action('hunt_scan_back', async (ctx) => {
     // resume the paused battle.
     if (hunt.stage === 'battle') {
 
-        hunt.paused = true;
+        hunt.paused = false;
 
         await ctx.editMessageText(
             buildBattleMessage(hunt),
@@ -1249,31 +1249,28 @@ if (hunt.stage !== 'spawned') {
 
             clearHuntSession(ctx);
 
-            try {
+try {
 
-                await ctx.editMessageText(
-                    `💀 <b>ALIEN DEFEATED!</b>\n\n` +
+    await ctx.editMessageText(
+        `👎🏻 <b>LOSE!! BETTER LUCK NEXT TIME</b>\n\n` +
 
-                    `👽 Wild: ${wild.name}\n\n` +
+        `🎊 <b>WINNER:</b> "${wild.name}"\n` +
 
-                    `🛸 Your Alien: ` +
-                    `${getAlienDisplayName(player)}\n\n` +
+        `🎉 <b>REWARD:</b> —`,
+        {
+            parse_mode: 'HTML'
+        }
+    );
 
-                    `❌ Your selected alien was defeated.\n` +
-                    `🏃 Hunt ended.`,
-                    {
-                        parse_mode: 'HTML'
-                    }
-                );
+} catch (error) {
 
-            } catch (error) {
-                console.error(
-                    'Player defeat message error:',
-                    error
-                );
-            }
+    console.error(
+        'Player defeat message error:',
+        error
+    );
+}
 
-            return;
+return;
         }
 
         hunt.turn = 'player';
