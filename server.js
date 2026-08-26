@@ -62,6 +62,10 @@ const userSchema = new mongoose.Schema({
     level: { type: Number, default: 1 },
     rupees: { type: Number, default: 1000 },
     hunts: { type: Number, default: 0 },
+    huntProgress: {
+    type: Number,
+    default: 0
+},
     duels: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
     lastDailyClaim: {
