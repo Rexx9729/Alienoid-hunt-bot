@@ -709,6 +709,7 @@ bot.start(async (ctx) => {
         }
     );
     }
+    });
 
 bot.command(['profile', 'me'], async (ctx) => {
     const userId = ctx.from.id;
