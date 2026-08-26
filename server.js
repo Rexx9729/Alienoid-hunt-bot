@@ -210,6 +210,7 @@ bot.telegram.setMyCommands([
     { command: 'trade', description: 'Trade aliens with another player' },
     { command: 'give', description: 'Give an item to another player' },
     { command: 'donate', description: 'Donate a scan to another player' },
+    { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
     scope: { type: 'all_private_chats' }
@@ -713,7 +714,9 @@ bot.start(async (ctx) => {
     return ctx.reply(
         `🔱HELLO ${username} Welcome to Alienoid\n` +
         `How can I help you?\n` +
-        `Type /for help !!`
+        `Type /help for  help !!`
+        `Type /profile for your progress`
+        `Keep Grinding all the best!!`
     );
             }
     });
