@@ -721,6 +721,9 @@ bot.action(
                     { show_alert: true }
                 );
             }
+            if (hunt.stage === 'battle') {
+    hunt.paused = true;
+            }
 
             // FINAL RULE: maximum 3 scans per hunt
             if (hunt.scansUsed >= MAX_SCANS_PER_HUNT) {
@@ -812,6 +815,25 @@ bot.action('hunt_scan_back', async (ctx) => {
 
     await ctx.answerCbQuery();
 
+    // If scan was opened during battle,
+    // resume the paused battle.
+    if (hunt.stage === 'battle') {
+
+        hunt.paused = true;
+
+        await ctx.editMessageText(
+            buildBattleMessage(hunt),
+            {
+                parse_mode: 'HTML',
+                reply_markup:
+                    getBattleKeyboard(hunt)
+            }
+        );
+
+        return;
+    }
+
+    // Scan from spawn screen
     await ctx.editMessageText(
         buildHuntMessage(hunt),
         {
@@ -860,17 +882,40 @@ bot.action('hunt_scan_back', async (ctx) => {
 
         const hunt = ctx.session?.hunt;
 
-        if (!hunt) {
-            return ctx.answerCbQuery(
-                '⚠️ Hunt session expired.'
-            );
-        }
+        // Resume paused battle
+if (
+    hunt.stage === 'battle' &&
+    hunt.paused
+) {
 
-        if (hunt.stage !== 'spawned') {
-            return ctx.answerCbQuery(
-                '⚠️ Invalid hunt state.'
-            );
+    hunt.paused = false;
+
+    await ctx.answerCbQuery();
+
+    await ctx.editMessageText(
+        buildBattleMessage(hunt),
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getBattleKeyboard(hunt)
         }
+    );
+
+    // If somehow it is wild's turn,
+    // continue it.
+    if (hunt.turn === 'wild') {
+        await executeWildTurn(ctx);
+    }
+
+    return;
+}
+
+// Normal first-time Hunt
+if (hunt.stage !== 'spawned') {
+    return ctx.answerCbQuery(
+        '⚠️ Invalid hunt state.'
+    );
+}
 
         const user =
             await User.findOne({
@@ -1254,3 +1299,153 @@ bot.action('hunt_scan_back', async (ctx) => {
 
 
     // ==================== HEALERX =========
+    // ==================== HEALERX ====================
+
+bot.action('hunt_healerx', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.'
+        );
+    }
+
+    if (hunt.stage !== 'battle') {
+        return ctx.answerCbQuery(
+            '⚠️ Battle is not active.'
+        );
+    }
+
+    if (hunt.paused) {
+        return ctx.answerCbQuery(
+            '⚠️ Battle is paused.'
+        );
+    }
+
+    if (hunt.turn !== 'player') {
+        return ctx.answerCbQuery(
+            '⏳ Wait for your turn.'
+        );
+    }
+
+    const user =
+        await User.findOne({
+            userId: ctx.from.id
+        });
+
+    if (!user) {
+        return ctx.answerCbQuery(
+            '⚠️ User not found.',
+            { show_alert: true }
+        );
+    }
+
+    const healerx =
+        Number(user.inventory?.healerx || 0);
+
+    if (healerx <= 0) {
+        return ctx.answerCbQuery(
+            '❌ You have no HealerX.',
+            { show_alert: true }
+        );
+    }
+
+    const player =
+        hunt.playerAlien;
+
+    if (!player) {
+        return ctx.answerCbQuery(
+            '❌ Your alien is missing.'
+        );
+    }
+
+    const recovery =
+        calculateHealerxRecovery(
+            player.maxHp
+        );
+
+    const oldHp =
+        player.currentHp;
+
+    player.currentHp =
+        Math.min(
+            player.maxHp,
+            player.currentHp + recovery
+        );
+
+    const actualRecovery =
+        player.currentHp - oldHp;
+
+    // Consume HealerX
+    user.inventory.healerx =
+        healerx - 1;
+
+    await user.save();
+
+    // HealerX consumes the player's turn
+    hunt.turn = 'wild';
+
+    await ctx.answerCbQuery(
+        `🧪 HealerX used! +${actualRecovery} HP`
+    );
+
+    await ctx.editMessageText(
+        buildBattleMessage(hunt) +
+        `\n\n🧪 <b>HealerX</b> restored ` +
+        `<b>${actualRecovery} HP</b>.`,
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getBattleKeyboard(hunt)
+        }
+    );
+
+    // Wild gets the next turn
+    await executeWildTurn(ctx);
+});
+
+
+// ==================== BATTLE BACK ====================
+
+bot.action('hunt_battle_back', async (ctx) => {
+
+    const hunt = ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.'
+        );
+    }
+
+    if (hunt.stage !== 'battle') {
+        return ctx.answerCbQuery(
+            '⚠️ Battle is not active.'
+        );
+    }
+
+    // Pause battle
+    hunt.paused = true;
+
+    await ctx.answerCbQuery(
+        '⏸️ Battle paused.'
+    );
+
+    await ctx.editMessageText(
+        buildHuntMessage(hunt) +
+        `\n\n⏸️ <b>Battle Paused</b>`,
+        {
+            parse_mode: 'HTML',
+            reply_markup:
+                getMainHuntKeyboard()
+        }
+    );
+});
+
+
+// ==================== EXPORT ====================
+
+module.exports = {
+    registerHunt
+};
+    
