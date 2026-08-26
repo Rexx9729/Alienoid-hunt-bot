@@ -697,20 +697,254 @@ bot.command(['inventory', 'items'], async (ctx) => {
     ctx.replyWithHTML(invMsg);
 });
 
+// ==================== ALIEN COLLECTION / BAG ====================
+
+const BAG_PAGE_SIZE = 15;
+
+function buildBagMessage(user, page = 0) {
+
+    const aliens = user.aliens || [];
+
+    // Group same aliens together
+    const grouped = new Map();
+
+    for (const alien of aliens) {
+
+        const name =
+            String(
+                alien.nickname ||
+                alien.name ||
+                'Unknown Alien'
+            ).trim();
+
+        if (!grouped.has(name)) {
+            grouped.set(name, 0);
+        }
+
+        grouped.set(
+            name,
+            grouped.get(name) + 1
+        );
+    }
+
+    const collection = Array.from(grouped.entries());
+
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(collection.length / BAG_PAGE_SIZE)
+        );
+
+    // Safety
+    page = Math.max(
+        0,
+        Math.min(page, totalPages - 1)
+    );
+
+    const start =
+        page * BAG_PAGE_SIZE;
+
+    const currentPage =
+        collection.slice(
+            start,
+            start + BAG_PAGE_SIZE
+        );
+
+    let msg =
+`👽 <b>ALIEN COLLECTION</b> [${collection.length}]
+────────────────`;
+
+    if (currentPage.length === 0) {
+
+        msg +=
+`\n🎒 Your alien collection is empty.`;
+
+    } else {
+
+        currentPage.forEach(
+            ([name, count], index) => {
+
+                msg +=
+`\n${start + index + 1}. ${name} ${count}x`;
+            }
+        );
+    }
+
+    msg +=
+`\n────────────────`;
+
+    return {
+        message: msg,
+        page,
+        totalPages
+    };
+}
+
+
+// ==================== /BAG ====================
+
 bot.command(['bag', 'aliens'], async (ctx) => {
-    const userId = ctx.from.id;
-    let user = await User.findOne({ userId });
 
-    if (!user || user.aliens.length === 0) return ctx.reply('🎒 Your alien bag is empty!');
+    try {
 
-    let msg = `🛸 ━━━ YOUR ALIEN DECK ━━━ 🛸\n\n`;
-    user.aliens.forEach((alien, index) => {
-        const starStr = alien.star > 0 ? `${'⭐'.repeat(alien.star)} ` : '';
-        msg += `${index + 1}. ${starStr}${alien.nickname} (${alien.rarity}) - Lvl ${alien.level}\n`;
-    });
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
 
-    msg += `\nTotal Aliens: ${user.aliens.length}`;
-    ctx.reply(msg);
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        const {
+            message,
+            page,
+            totalPages
+        } = buildBagMessage(user, 0);
+
+        const buttons = [];
+
+        if (totalPages > 1) {
+
+            buttons.push([
+                {
+                    text: '⬅️ Previous',
+                    callback_data: 'bag_page_0'
+                },
+                {
+                    text: `Page 1/${totalPages}`,
+                    callback_data: 'bag_current'
+                },
+                {
+                    text: 'Next ➡️',
+                    callback_data: 'bag_page_1'
+                }
+            ]);
+
+        }
+
+        return ctx.reply(
+            message,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: buttons
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /bag error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load your alien collection.'
+        );
+    }
+});
+
+
+// ==================== BAG PAGINATION ====================
+
+bot.action(/^bag_page_(\d+)$/, async (ctx) => {
+
+    try {
+
+        const page =
+            Number(ctx.match[1]);
+
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
+
+        if (!user) {
+            return ctx.answerCbQuery(
+                '⚠️ User not found.',
+                { show_alert: true }
+            );
+        }
+
+        const {
+            message,
+            page: safePage,
+            totalPages
+        } = buildBagMessage(
+            user,
+            page
+        );
+
+        const buttons = [];
+
+        const row = [];
+
+        if (safePage > 0) {
+
+            row.push({
+                text: '⬅️ Previous',
+                callback_data:
+                    `bag_page_${safePage - 1}`
+            });
+        }
+
+        row.push({
+            text:
+                `Page ${safePage + 1}/${totalPages}`,
+            callback_data: 'bag_current'
+        });
+
+        if (safePage < totalPages - 1) {
+
+            row.push({
+                text: 'Next ➡️',
+                callback_data:
+                    `bag_page_${safePage + 1}`
+            });
+        }
+
+        if (totalPages > 1) {
+            buttons.push(row);
+        }
+
+        await ctx.answerCbQuery();
+
+        return ctx.editMessageText(
+            message,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: buttons
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Bag pagination error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not load this page.',
+            { show_alert: true }
+        );
+    }
+});
+
+
+// ==================== BAG CURRENT PAGE ====================
+
+bot.action('bag_current', async (ctx) => {
+
+    return ctx.answerCbQuery(
+        '📖 You are already on this page.'
+    );
 });
 // ==================== ALIEN DECK — SET / OUT ====================
 
