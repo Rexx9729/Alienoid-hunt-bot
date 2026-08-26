@@ -102,7 +102,7 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const { registerHunt } = require('./services/hunt');
-registerHunt(bot, User);
+
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(
@@ -110,6 +110,7 @@ bot.use(
         defaultSession: () => ({})
     })
 );
+registerHunt(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
 
 const ADD_ALIEN_TIMEOUT = 2 * 60 * 1000; // 2 minutes
