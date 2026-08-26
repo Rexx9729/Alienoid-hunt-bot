@@ -386,8 +386,13 @@ bot.action(/^alien_rarity_(.+)$/, async (ctx) => {
             { text: '🧠 Psychic', callback_data: 'alien_element_Psychic' }
         ],
         [
-            { text: '🌀 Gravity', callback_data: 'alien_element_Gravity' }
+            { text: '🌀 Gravity', callback_data: 'alien_element_Gravity' },
+            { text: '☢️ Nuclear', callback_data: 'alien_element_Nuclear' }
+        ],
+        [
+            { text: '🔆 Plasma', callback_data: 'alien_element_Plasma' }
         ]
+    
     ];
 
     // Void only belongs to God tier.
