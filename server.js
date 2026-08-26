@@ -615,31 +615,100 @@ bot.start(async (ctx) => {
     let user = await User.findOne({ userId });
 
     if (!user) {
-        user = new User({
-            userId,
-            username,
-            rupees: 1000,
-            aliens: []
+
+    // ==================== STARTER ALIEN ====================
+
+    const basicAliens =
+        await Alien.find({
+            rarity: 'Basic'
         });
 
-        await user.save();
+    if (!basicAliens.length) {
 
-        ctx.reply(
-            `🔱 Hello ${username}, welcome to the Alienoid ||\n\n` +
-            `🎉 New Login Rewards : ₹1,000\n` +
-            `🎉 Your First Companion : Coming Soon 👽\n\n` +
-            `START NOW YOUR THRILLER JOURNEY ⚡`
+        console.error(
+            '❌ No Basic aliens found for starter reward.'
         );
-    } else {
-        ctx.reply(
-            `🔱 Welcome back ${username} to the Alienoid ||\n\n` +
-            `⚡ Your thriller journey continues...\n\n` +
-            `Use /profile to view your Hunter profile.\n` +
-            `Use /inventory to check your items.\n` +
-            `Use /hunt to hunt wild aliens.`
+
+        return ctx.reply(
+            '❌ Starter alien could not be assigned.\n\n' +
+            'Please contact the owner.'
         );
     }
-});
+
+    // Pick ONE random Basic alien
+    const starter =
+        basicAliens[
+            Math.floor(
+                Math.random() * basicAliens.length
+            )
+        ];
+
+    // Create player's own copy
+    const starterAlien = {
+
+        alienId:
+            new mongoose.Types.ObjectId().toString(),
+
+        name:
+            starter.name,
+
+        nickname:
+            starter.name,
+
+        rarity:
+            starter.rarity,
+
+        star: 0,
+
+        hp:
+            Number(starter.maxHp || 1),
+
+        maxHp:
+            Number(starter.maxHp || 1),
+
+        atk:
+            Number(starter.baseAttack || 1),
+
+        def:
+            Number(starter.defense || 0),
+
+        element:
+            starter.element || 'Physical',
+
+        fileId:
+            starter.imageFileId || ''
+    };
+
+    user = new User({
+
+        userId,
+        username,
+
+        rupees: 1000,
+
+        aliens: [
+            starterAlien
+        ]
+    });
+
+    await user.save();
+
+    return ctx.reply(
+        `🔱 Hello ${username}, welcome to the Alienoid ||\n\n` +
+
+        `🎉 New Login Rewards : ₹1,000\n` +
+
+        `👽 Your First Companion : ` +
+        `<b>${starter.name}</b>\n` +
+
+        `⭐ Rarity : <b>${starter.rarity}</b>\n\n` +
+
+        `START NOW YOUR THRILLER JOURNEY ⚡`,
+        {
+            parse_mode: 'HTML'
+        }
+    );
+    }
 
 bot.command(['profile', 'me'], async (ctx) => {
     const userId = ctx.from.id;
