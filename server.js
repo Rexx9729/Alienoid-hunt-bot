@@ -1359,6 +1359,7 @@ bot.command('merge', async (ctx) => {
             newAtk,
             newMaxHp,
             newDef,
+            newSpeed,
 
             sourceAlien: {
                 name:
