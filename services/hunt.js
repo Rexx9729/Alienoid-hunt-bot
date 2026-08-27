@@ -1337,9 +1337,11 @@ return;
                 `\n\n` +
                 `👽 Wild alien used ` +
                 `<b>${attack.name}</b>\n` +
+                (
             dodged
     ? `💨 <b>${getAlienDisplayName(player)}</b> dodged the attack!`
     : `💥 Damage: <b>${result.damage}</b>`
+                    ),
                 {
                     parse_mode: 'HTML',
                     reply_markup:
