@@ -830,45 +830,70 @@ bot.command(['inventory', 'items'], async (ctx) => {
 // ==================== ALIEN COLLECTION / BAG ====================
 
 const BAG_PAGE_SIZE = 15;
-
 function buildBagMessage(user, page = 0) {
 
     const aliens = user.aliens || [];
 
-    // Group same aliens together
+    // Group same alien + same star together
     const grouped = new Map();
 
     for (const alien of aliens) {
 
-        const name =
+        const baseName =
             String(
                 alien.nickname ||
                 alien.name ||
                 'Unknown Alien'
             ).trim();
 
-        if (!grouped.has(name)) {
-            grouped.set(name, 0);
+        const star =
+            Number(alien.star || 0);
+
+        const displayName =
+            star > 0
+                ? `${'⭐'.repeat(star)} ${baseName}`
+                : baseName;
+
+        const key =
+            `${baseName.toLowerCase()}_${star}`;
+
+        if (!grouped.has(key)) {
+            grouped.set(
+                key,
+                {
+                    name: displayName,
+                    count: 0
+                }
+            );
         }
 
-        grouped.set(
-            name,
-            grouped.get(name) + 1
-        );
+        grouped.get(key).count += 1;
     }
 
-    const collection = Array.from(grouped.entries());
+    const collection =
+        Array.from(
+            grouped.values()
+        ).map(item => [
+            item.name,
+            item.count
+        ]);
 
     const totalPages =
         Math.max(
             1,
-            Math.ceil(collection.length / BAG_PAGE_SIZE)
+            Math.ceil(
+                collection.length /
+                BAG_PAGE_SIZE
+            )
         );
 
     // Safety
     page = Math.max(
         0,
-        Math.min(page, totalPages - 1)
+        Math.min(
+            page,
+            totalPages - 1
+        )
     );
 
     const start =
@@ -909,6 +934,8 @@ function buildBagMessage(user, page = 0) {
         totalPages
     };
 }
+
+
 
 
 // ==================== /alist ====================
@@ -1079,6 +1106,8 @@ bot.action('alist_current', async (ctx) => {
 
 // ==================== STAR MERGE ====================
 
+// ==================== STAR MERGE ====================
+
 // /merge Stinkfly
 // /merge Stinkfly⭐
 // /merge Stinkfly⭐⭐
@@ -1107,7 +1136,10 @@ bot.command('merge', async (ctx) => {
         const input =
             ctx.message.text
                 .trim()
-                .replace(/^\/merge(?:@\w+)?\s*/i, '');
+                .replace(
+                    /^\/merge(?:@\w+)?\s*/i,
+                    ''
+                );
 
         if (!input) {
             return ctx.reply(
@@ -1119,7 +1151,7 @@ bot.command('merge', async (ctx) => {
             );
         }
 
-        // ==================== READ STAR LEVEL ====================
+        // ==================== READ STAR ====================
 
         let star = 0;
         let alienName = input;
@@ -1147,17 +1179,16 @@ bot.command('merge', async (ctx) => {
         // ==================== MAX STAR ====================
 
         if (star >= 3) {
+
             return ctx.reply(
-                `❌ ${'⭐'.repeat(3)} ` +
-                `${alienName} is already at MAX STAR.\n\n` +
-                `⭐⭐⭐ is the highest Star level.`
+                `❌ ⭐⭐⭐ ${alienName} is already MAX STAR.`
             );
         }
 
         const targetStar =
             star + 1;
 
-        // ==================== FIND MATCHING ALIENS ====================
+        // ==================== FIND ALIENS ====================
 
         const matchingAliens =
             user.aliens.filter(alien => {
@@ -1184,11 +1215,13 @@ bot.command('merge', async (ctx) => {
 
         if (matchingAliens.length < 3) {
 
-            return ctx.reply(
-                `❌ Not enough ${alienName} ` +
-                `${star > 0 ? '⭐'.repeat(star) + ' ' : ''}` +
-                `to merge.\n\n` +
+            const currentStars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
 
+            return ctx.reply(
+                `❌ Not enough ${currentStars}${alienName} to merge.\n\n` +
                 `You have: ${matchingAliens.length}x\n` +
                 `Required: 3x`
             );
@@ -1203,6 +1236,7 @@ bot.command('merge', async (ctx) => {
             STAR_MERGE_FEES[rarity]?.[targetStar];
 
         if (mergeFee === undefined) {
+
             return ctx.reply(
                 `❌ Merge fee is not configured for ` +
                 `${rarity} ${'⭐'.repeat(targetStar)}.`
@@ -1215,10 +1249,8 @@ bot.command('merge', async (ctx) => {
 
             return ctx.reply(
                 `❌ LOW BALANCE\n\n` +
-
                 `💰 Your Balance: ₹${user.rupees}\n` +
                 `💸 Required: ₹${mergeFee}\n\n` +
-
                 `You need ₹${mergeFee - user.rupees} more.`
             );
         }
@@ -1228,11 +1260,14 @@ bot.command('merge', async (ctx) => {
         const mergeIds =
             matchingAliens
                 .slice(0, 3)
-                .map(alien => alien.alienId);
+                .map(
+                    alien => alien.alienId
+                );
 
         const protectedAlien =
             mergeIds.some(
-                id => user.deck.includes(id)
+                id =>
+                    user.deck.includes(id)
             );
 
         if (protectedAlien) {
@@ -1240,12 +1275,11 @@ bot.command('merge', async (ctx) => {
             return ctx.reply(
                 `❌ One of the ${alienName} aliens ` +
                 `needed for this merge is currently in your deck.\n\n` +
-
                 `Remove it from your deck first using /out.`
             );
         }
 
-        // ==================== POWER ====================
+        // ==================== POWER PREVIEW ====================
 
         const baseAtk =
             Number(
@@ -1282,105 +1316,116 @@ bot.command('merge', async (ctx) => {
                 baseDef * multiplier
             );
 
-        // ==================== REMOVE 3 ====================
+        const currentStars =
+            star > 0
+                ? '⭐'.repeat(star)
+                : 'Normal';
 
-        let removed = 0;
-
-        user.aliens =
-            user.aliens.filter(alien => {
-
-                if (
-                    removed < 3 &&
-                    mergeIds.includes(
-                        alien.alienId
-                    )
-                ) {
-                    removed++;
-                    return false;
-                }
-
-                return true;
-            });
-
-        // ==================== CREATE STAR ALIEN ====================
-
-        const sourceAlien =
-            matchingAliens[0];
-
-        const mergedAlien = {
-
-            alienId:
-                new mongoose.Types.ObjectId()
-                    .toString(),
-
-            name:
-                sourceAlien.name,
-
-            nickname:
-                sourceAlien.nickname ||
-                sourceAlien.name,
-
-            rarity:
-                sourceAlien.rarity,
-
-            star:
-                targetStar,
-
-            level:
-                Number(
-                    sourceAlien.level || 1
-                ),
-
-            hp:
-                newMaxHp,
-
-            maxHp:
-                newMaxHp,
-
-            atk:
-                newAtk,
-
-            def:
-                newDef,
-
-            element:
-                sourceAlien.element,
-
-            fileId:
-                sourceAlien.fileId || ''
-        };
-
-        user.aliens.push(
-            mergedAlien
-        );
-
-        // ==================== PAY FEE ====================
-
-        user.rupees -= mergeFee;
-
-        await user.save();
-
-        const stars =
+        const targetStars =
             '⭐'.repeat(targetStar);
 
+        // ==================== SAVE PENDING MERGE ====================
+
+        ctx.session ??= {};
+
+        ctx.session.pendingMerge = {
+            alienIds: mergeIds,
+
+            alienName:
+                matchingAliens[0].name,
+
+            nickname:
+                matchingAliens[0].nickname ||
+                matchingAliens[0].name,
+
+            rarity,
+
+            sourceStar: star,
+
+            targetStar,
+
+            mergeFee,
+
+            newAtk,
+            newMaxHp,
+            newDef,
+
+            sourceAlien: {
+                name:
+                    matchingAliens[0].name,
+
+                nickname:
+                    matchingAliens[0].nickname ||
+                    matchingAliens[0].name,
+
+                rarity:
+                    matchingAliens[0].rarity,
+
+                level:
+                    Number(
+                        matchingAliens[0].level || 1
+                    ),
+
+                element:
+                    matchingAliens[0].element,
+
+                fileId:
+                    matchingAliens[0].fileId || ''
+            },
+
+            userId
+        };
+
+        // ==================== CONFIRMATION ====================
+
         return ctx.reply(
-            `✨ <b>MERGE SUCCESSFUL!</b>\n\n` +
 
-            `👽 ${sourceAlien.name}\n` +
-            `${stars} Star\n\n` +
+            `✨ <b>MERGE PREVIEW</b>\n\n` +
 
-            `3 × ${sourceAlien.name} ` +
-            `${star > 0 ? '⭐'.repeat(star) : 'Normal'}\n` +
-            `↓\n` +
-            `${stars} ${sourceAlien.name}\n\n` +
+            `👽 <b>${matchingAliens[0].name}</b>\n\n` +
+
+            `🔹 ${currentStars} × 3\n` +
+            `⬇️\n` +
+            `🔹 ${targetStars}\n\n` +
 
             `⚡ Power: ` +
-            `${Math.round(multiplier * 100)}%\n` +
+            `<b>${Math.round(multiplier * 100)}%</b>\n\n` +
 
-            `💸 Merge Fee: ₹${mergeFee}\n` +
-            `💰 Balance: ₹${user.rupees}`,
+            `⚔️ ATK: ` +
+            `${baseAtk} → <b>${newAtk}</b>\n` +
+
+            `❤️ HP: ` +
+            `${baseHp} → <b>${newMaxHp}</b>\n` +
+
+            `🛡️ DEF: ` +
+            `${baseDef} → <b>${newDef}</b>\n\n` +
+
+            `💸 Merge Fee: <b>₹${mergeFee}</b>\n` +
+            `💰 Balance After: ` +
+            `<b>₹${user.rupees - mergeFee}</b>\n\n` +
+
+            `⚠️ 3 ${currentStars} aliens will be consumed.\n` +
+            `Do you want to continue?`,
+
             {
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '✅ MERGE',
+                                callback_data:
+                                    'merge_confirm'
+                            },
+                            {
+                                text: '❌ CANCEL',
+                                callback_data:
+                                    'merge_cancel'
+                            }
+                        ]
+                    ]
+                }
             }
         );
 
@@ -1392,11 +1437,244 @@ bot.command('merge', async (ctx) => {
         );
 
         return ctx.reply(
-            '❌ Something went wrong while merging your aliens.'
+            '❌ Something went wrong while preparing the merge.'
         );
     }
 });
 
+
+// ==================== MERGE CANCEL ====================
+
+bot.action('merge_cancel', async (ctx) => {
+
+    ctx.session ??= {};
+
+    ctx.session.pendingMerge = null;
+
+    await ctx.answerCbQuery(
+        '❌ Merge cancelled.'
+    );
+
+    try {
+
+        return await ctx.editMessageText(
+            '❌ <b>MERGE CANCELLED</b>\n\n' +
+            'No aliens or Rupees were changed.',
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Merge cancel message error:',
+            error
+        );
+    }
+});
+
+
+// ==================== MERGE CONFIRM ====================
+
+bot.action('merge_confirm', async (ctx) => {
+
+    try {
+
+        const pending =
+            ctx.session?.pendingMerge;
+
+        if (!pending) {
+
+            return ctx.answerCbQuery(
+                '⚠️ Merge session expired.',
+                { show_alert: true }
+            );
+        }
+
+        if (
+            pending.userId !==
+            ctx.from.id
+        ) {
+
+            return ctx.answerCbQuery(
+                '❌ This merge belongs to another user.',
+                { show_alert: true }
+            );
+        }
+
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
+
+        if (!user) {
+
+            ctx.session.pendingMerge = null;
+
+            return ctx.answerCbQuery(
+                '⚠️ User not found.',
+                { show_alert: true }
+            );
+        }
+
+        // Re-check balance
+        if (
+            user.rupees <
+            pending.mergeFee
+        ) {
+
+            ctx.session.pendingMerge = null;
+
+            return ctx.answerCbQuery(
+                '❌ Your Rupees are no longer enough.',
+                { show_alert: true }
+            );
+        }
+
+        // Re-check exact 3 aliens still exist
+        const available =
+            user.aliens.filter(
+                alien =>
+                    pending.alienIds.includes(
+                        alien.alienId
+                    )
+            );
+
+        if (available.length !== 3) {
+
+            ctx.session.pendingMerge = null;
+
+            return ctx.answerCbQuery(
+                '❌ Required aliens are no longer available.',
+                { show_alert: true }
+            );
+        }
+
+        // ==================== REMOVE 3 ====================
+
+        user.aliens =
+            user.aliens.filter(
+                alien =>
+                    !pending.alienIds.includes(
+                        alien.alienId
+                    )
+            );
+
+        // ==================== CREATE MERGED ALIEN ====================
+
+        const mergedAlien = {
+
+            alienId:
+                new mongoose.Types.ObjectId()
+                    .toString(),
+
+            name:
+                pending.sourceAlien.name,
+
+            nickname:
+                pending.sourceAlien.nickname,
+
+            rarity:
+                pending.sourceAlien.rarity,
+
+            star:
+                pending.targetStar,
+
+            level:
+                pending.sourceAlien.level,
+
+            hp:
+                pending.newMaxHp,
+
+            maxHp:
+                pending.newMaxHp,
+
+            atk:
+                pending.newAtk,
+
+            def:
+                pending.newDef,
+
+            element:
+                pending.sourceAlien.element,
+
+            fileId:
+                pending.sourceAlien.fileId
+        };
+
+        user.aliens.push(
+            mergedAlien
+        );
+
+        // ==================== PAY ====================
+
+        user.rupees -=
+            pending.mergeFee;
+
+        await user.save();
+
+        const stars =
+            '⭐'.repeat(
+                pending.targetStar
+            );
+
+        ctx.session.pendingMerge = null;
+
+        await ctx.answerCbQuery(
+            '✨ Merge successful!'
+        );
+
+        return ctx.editMessageText(
+
+            `✨ <b>MERGE SUCCESSFUL!</b>\n\n` +
+
+            `👽 <b>${pending.sourceAlien.name}</b>\n` +
+            `${stars}\n\n` +
+
+            `3 × ` +
+            `${pending.sourceStar > 0
+                ? '⭐'.repeat(pending.sourceStar)
+                : 'Normal'}\n` +
+
+            `↓\n` +
+
+            `${stars} ` +
+            `${pending.sourceAlien.name}\n\n` +
+
+            `⚡ Power: ` +
+            `<b>${Math.round(
+                STAR_POWER_MULTIPLIER[
+                    pending.targetStar
+                ] * 100
+            )}%</b>\n` +
+
+            `💸 Merge Fee: ` +
+            `<b>₹${pending.mergeFee}</b>\n` +
+
+            `💰 Balance: ` +
+            `<b>₹${user.rupees}</b>`,
+
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ merge confirmation error:',
+            error
+        );
+
+        ctx.session.pendingMerge = null;
+
+        return ctx.answerCbQuery(
+            '❌ Merge failed. No safe confirmation could be completed.',
+            { show_alert: true }
+        );
+    }
+});
 // ==================== ALIEN DECK — SET / OUT ====================
 
 // /set alienname
