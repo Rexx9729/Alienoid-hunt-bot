@@ -1607,7 +1607,7 @@ bot.action('merge_confirm', async (ctx) => {
             def:
                 pending.newDef,
             speed:
-    newSpeed,
+    pending.newSpeed,
 
             element:
                 pending.sourceAlien.element,
