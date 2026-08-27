@@ -196,6 +196,54 @@ const ALIEN_ECONOMY = {
         spawnThreshold: 600
     }
 };
+// ==================== STAR MERGE CONFIG ====================
+
+const STAR_MERGE_FEES = {
+    Basic: {
+        1: 200,
+        2: 400,
+        3: 600
+    },
+
+    Common: {
+        1: 400,
+        2: 600,
+        3: 800
+    },
+
+    Rare: {
+        1: 600,
+        2: 800,
+        3: 1000
+    },
+
+    Legendary: {
+        1: 1000,
+        2: 1200,
+        3: 1400
+    },
+
+    Cosmic: {
+        1: 2000,
+        2: 2500,
+        3: 3000
+    },
+
+    God: {
+        1: 10000,
+        2: 15000,
+        3: 20000
+    }
+};
+
+// Star power multiplier
+const STAR_POWER_MULTIPLIER = {
+    0: 1.00,
+    1: 1.30,
+    2: 1.60,
+    3: 2.00
+};
+
 // ==================== TELEGRAM COMMAND MENU ====================
 
 // Private DM command menu
@@ -204,6 +252,7 @@ bot.telegram.setMyCommands([
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
+    { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
@@ -223,6 +272,7 @@ bot.telegram.setMyCommands([
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
+    { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
@@ -861,7 +911,7 @@ function buildBagMessage(user, page = 0) {
 }
 
 
-// ==================== /BAG ====================
+// ==================== /alist ====================
 
 bot.command(['alist', 'aliens'], async (ctx) => {
 
@@ -929,7 +979,7 @@ bot.command(['alist', 'aliens'], async (ctx) => {
 });
 
 
-// ==================== BAG PAGINATION ====================
+// ==================== ALINE LIST PAGINATION ====================
 
 bot.action(/^alist_page_(\d+)$/, async (ctx) => {
 
@@ -1026,6 +1076,327 @@ bot.action('alist_current', async (ctx) => {
         '📖 You are already on this page.'
     );
 });
+
+// ==================== STAR MERGE ====================
+
+// /merge Stinkfly
+// /merge Stinkfly⭐
+// /merge Stinkfly⭐⭐
+
+bot.command('merge', async (ctx) => {
+
+    try {
+
+        const userId = ctx.from.id;
+
+        const user =
+            await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (!user.aliens || user.aliens.length === 0) {
+            return ctx.reply(
+                '🎒 Your alien collection is empty!'
+            );
+        }
+
+        const input =
+            ctx.message.text
+                .trim()
+                .replace(/^\/merge(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/merge Stinkfly\n' +
+                '/merge Stinkfly⭐\n' +
+                '/merge Stinkfly⭐⭐'
+            );
+        }
+
+        // ==================== READ STAR LEVEL ====================
+
+        let star = 0;
+        let alienName = input;
+
+        const starMatch =
+            input.match(/(⭐{1,3})$/);
+
+        if (starMatch) {
+
+            star =
+                starMatch[1].length;
+
+            alienName =
+                input
+                    .replace(/⭐{1,3}$/, '')
+                    .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // ==================== MAX STAR ====================
+
+        if (star >= 3) {
+            return ctx.reply(
+                `❌ ${'⭐'.repeat(3)} ` +
+                `${alienName} is already at MAX STAR.\n\n` +
+                `⭐⭐⭐ is the highest Star level.`
+            );
+        }
+
+        const targetStar =
+            star + 1;
+
+        // ==================== FIND MATCHING ALIENS ====================
+
+        const matchingAliens =
+            user.aliens.filter(alien => {
+
+                const nameMatch =
+                    String(
+                        alien.name || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                const nicknameMatch =
+                    String(
+                        alien.nickname || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                return (
+                    (nameMatch || nicknameMatch) &&
+                    Number(alien.star || 0) === star
+                );
+            });
+
+        // ==================== NEED 3 ====================
+
+        if (matchingAliens.length < 3) {
+
+            return ctx.reply(
+                `❌ Not enough ${alienName} ` +
+                `${star > 0 ? '⭐'.repeat(star) + ' ' : ''}` +
+                `to merge.\n\n` +
+
+                `You have: ${matchingAliens.length}x\n` +
+                `Required: 3x`
+            );
+        }
+
+        // ==================== RARITY ====================
+
+        const rarity =
+            matchingAliens[0].rarity;
+
+        const mergeFee =
+            STAR_MERGE_FEES[rarity]?.[targetStar];
+
+        if (mergeFee === undefined) {
+            return ctx.reply(
+                `❌ Merge fee is not configured for ` +
+                `${rarity} ${'⭐'.repeat(targetStar)}.`
+            );
+        }
+
+        // ==================== BALANCE ====================
+
+        if (user.rupees < mergeFee) {
+
+            return ctx.reply(
+                `❌ LOW BALANCE\n\n` +
+
+                `💰 Your Balance: ₹${user.rupees}\n` +
+                `💸 Required: ₹${mergeFee}\n\n` +
+
+                `You need ₹${mergeFee - user.rupees} more.`
+            );
+        }
+
+        // ==================== DECK PROTECTION ====================
+
+        const mergeIds =
+            matchingAliens
+                .slice(0, 3)
+                .map(alien => alien.alienId);
+
+        const protectedAlien =
+            mergeIds.some(
+                id => user.deck.includes(id)
+            );
+
+        if (protectedAlien) {
+
+            return ctx.reply(
+                `❌ One of the ${alienName} aliens ` +
+                `needed for this merge is currently in your deck.\n\n` +
+
+                `Remove it from your deck first using /out.`
+            );
+        }
+
+        // ==================== POWER ====================
+
+        const baseAtk =
+            Number(
+                matchingAliens[0].atk || 1
+            );
+
+        const baseHp =
+            Number(
+                matchingAliens[0].maxHp ||
+                matchingAliens[0].hp ||
+                1
+            );
+
+        const baseDef =
+            Number(
+                matchingAliens[0].def || 0
+            );
+
+        const multiplier =
+            STAR_POWER_MULTIPLIER[targetStar];
+
+        const newAtk =
+            Math.round(
+                baseAtk * multiplier
+            );
+
+        const newMaxHp =
+            Math.round(
+                baseHp * multiplier
+            );
+
+        const newDef =
+            Math.round(
+                baseDef * multiplier
+            );
+
+        // ==================== REMOVE 3 ====================
+
+        let removed = 0;
+
+        user.aliens =
+            user.aliens.filter(alien => {
+
+                if (
+                    removed < 3 &&
+                    mergeIds.includes(
+                        alien.alienId
+                    )
+                ) {
+                    removed++;
+                    return false;
+                }
+
+                return true;
+            });
+
+        // ==================== CREATE STAR ALIEN ====================
+
+        const sourceAlien =
+            matchingAliens[0];
+
+        const mergedAlien = {
+
+            alienId:
+                new mongoose.Types.ObjectId()
+                    .toString(),
+
+            name:
+                sourceAlien.name,
+
+            nickname:
+                sourceAlien.nickname ||
+                sourceAlien.name,
+
+            rarity:
+                sourceAlien.rarity,
+
+            star:
+                targetStar,
+
+            level:
+                Number(
+                    sourceAlien.level || 1
+                ),
+
+            hp:
+                newMaxHp,
+
+            maxHp:
+                newMaxHp,
+
+            atk:
+                newAtk,
+
+            def:
+                newDef,
+
+            element:
+                sourceAlien.element,
+
+            fileId:
+                sourceAlien.fileId || ''
+        };
+
+        user.aliens.push(
+            mergedAlien
+        );
+
+        // ==================== PAY FEE ====================
+
+        user.rupees -= mergeFee;
+
+        await user.save();
+
+        const stars =
+            '⭐'.repeat(targetStar);
+
+        return ctx.reply(
+            `✨ <b>MERGE SUCCESSFUL!</b>\n\n` +
+
+            `👽 ${sourceAlien.name}\n` +
+            `${stars} Star\n\n` +
+
+            `3 × ${sourceAlien.name} ` +
+            `${star > 0 ? '⭐'.repeat(star) : 'Normal'}\n` +
+            `↓\n` +
+            `${stars} ${sourceAlien.name}\n\n` +
+
+            `⚡ Power: ` +
+            `${Math.round(multiplier * 100)}%\n` +
+
+            `💸 Merge Fee: ₹${mergeFee}\n` +
+            `💰 Balance: ₹${user.rupees}`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /merge error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while merging your aliens.'
+        );
+    }
+});
+
 // ==================== ALIEN DECK — SET / OUT ====================
 
 // /set alienname
@@ -2117,12 +2488,14 @@ View your level, Rupees, Hunts, Duels and wins.
 /inventory
 View your items, scans and Rupees.
 
-/bag
+/alist
 View your collected aliens.
+
+/merge <alien>
+Merge 3 identical aliens to increase Star level.
 
 /hunt
 Hunt a wild alien, capture it or defeat it.
-⚠️ DM only.
 
 /daily
 Claim your daily ₹500 reward.
@@ -2140,8 +2513,6 @@ Trade an alien with another player.
 /give <item>
 Give an item to another player.
 
-/donate <scan>
-Donate a scan to another player.
 
 /help
 Open the Alienoid Hunt Help Menu.`;
@@ -2254,7 +2625,13 @@ Legendary
 Cosmic
 ₹2,000 → 1★
 ₹2,500 → 2★
-₹3,000 → 3★`;
+₹3,000 → 3★
+
+God
+10000-> 1⭐
+15000-> 2⭐
+20000-> 3⭐
+`;
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(message, {
