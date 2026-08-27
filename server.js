@@ -95,6 +95,7 @@ const userSchema = new mongoose.Schema({
         maxHp: Number,
         atk: Number,
         def: Number,
+        speed: { type: Number, default: 0 },
         element: String,
         fileId: { type: String, default: '' }
     }]
@@ -2021,6 +2022,8 @@ bot.command('agive', async (ctx) => {
 
             def:
                 giftedAlien.def,
+            speed:
+    giftedAlien.speed,
 
             element:
                 giftedAlien.element,
@@ -2049,10 +2052,10 @@ bot.command('agive', async (ctx) => {
             'Hunter';
 
         return ctx.reply(
-            `🎉 "${senderName}" Gifted ` +
-            `"${giftedAlienData.nickname}" ` +
-            `to "${receiverName}"\n` +
-            `Successfully!!`
+            `────────────────🎉 ${senderName} Gifted ` +
+            `${giftedAlienData.nickname} ` +
+            `to ${receiverName}\n` +
+            `Successfully!!────────────────`
         );
 
     } catch (error) {
