@@ -361,6 +361,7 @@ async function captureWildAlien(ctx, User, scanType) {
 
             atk: wild.baseAttack,
             def: wild.defense,
+            speed: wild.speed,
 
             element: wild.element,
 
