@@ -1299,6 +1299,10 @@ bot.command('merge', async (ctx) => {
             Number(
                 matchingAliens[0].def || 0
             );
+        const baseSpeed =
+    Number(
+        matchingAliens[0].speed || 0
+    );
 
         const multiplier =
             STAR_POWER_MULTIPLIER[targetStar];
@@ -1317,6 +1321,10 @@ bot.command('merge', async (ctx) => {
             Math.round(
                 baseDef * multiplier
             );
+        const newSpeed =
+    Math.round(
+        baseSpeed * multiplier
+    );
 
         const currentStars =
             star > 0
@@ -1597,6 +1605,8 @@ bot.action('merge_confirm', async (ctx) => {
 
             def:
                 pending.newDef,
+            speed:
+    newSpeed,
 
             element:
                 pending.sourceAlien.element,
@@ -1798,44 +1808,53 @@ bot.command('stats', async (ctx) => {
                 ? `${'⭐'.repeat(star)} ${alien.name}`
                 : alien.name;
 
-        const attacks =
-            Array.isArray(alien.attacks)
-                ? alien.attacks
-                : [];
+        // Get attack names + base damage from Alien database
+const databaseAlien =
+    await Alien.findOne({
+        name: alien.name
+    });
 
-        let attackText = '';
+let attackText = '';
 
-        if (attacks.length) {
+if (
+    databaseAlien &&
+    Array.isArray(databaseAlien.attacks) &&
+    databaseAlien.attacks.length
+) {
 
-            attacks.forEach(
-                (attack, index) => {
+    const star =
+        Number(alien.star || 0);
 
-                    const attackName =
-                        attack.name ||
-                        `Attack ${index + 1}`;
+    const starMultiplier =
+        star === 0 ? 1 :
+        star === 1 ? 1.30 :
+        star === 2 ? 1.60 :
+        star === 3 ? 2.00 :
+        1;
 
-                    const damage =
-                        Number(
-                            attack.damage ??
-                            attack.baseDamage ??
-                            0
-                        );
+    attackText =
+        databaseAlien.attacks
+            .map((attack, index) => {
 
-                    attackText +=
-                        `${index + 1}. ` +
-                        `${attackName} — ` +
-                        `${damage} DMG\n`;
-                }
-            );
+                const damage =
+                    Math.round(
+                        Number(attack.damage || 0) *
+                        starMultiplier
+                    );
 
-            attackText =
-                attackText.trimEnd();
+                return (
+                    `${index + 1}. ` +
+                    `${attack.name} — ` +
+                    `${damage} DMG`
+                );
+            })
+            .join('\n');
 
-        } else {
+} else {
 
-            attackText =
-                'No attacks available.';
-        }
+    attackText =
+        'No attacks available.';
+}
 
         const statsMessage =
 `<b>${displayName} INFO</b>
