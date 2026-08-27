@@ -642,6 +642,8 @@ const spawned =
     player: false,
     wild: false
 },
+                playerAttackCount: 0,
+wildAttackCount: 0,
 
                 startedAt: Date.now()
             };
@@ -1133,7 +1135,10 @@ if (hunt.stage !== 'spawned') {
 
 let dodged = false;
 
-if (!hunt.dodgeUsed.wild) {
+if (
+    hunt.playerAttackCount > 0 &&
+    !hunt.dodgeUsed.wild
+) {
 
     const dodgeResult =
         rollDodge(
@@ -1159,7 +1164,7 @@ if (!dodged) {
             wild.currentHp - result.damage
         );
 }
-
+hunt.playerAttackCount += 1;
         await ctx.answerCbQuery(
     dodged
         ? `💨 ${wild.name} dodged the attack!`
@@ -1271,7 +1276,10 @@ if (!dodged) {
 
         let dodged = false;
 
-if (!hunt.dodgeUsed.player) {
+if (
+    hunt.wildAttackCount > 0 &&
+    !hunt.dodgeUsed.player
+) {
 
     const dodgeResult =
         rollDodge(
@@ -1298,7 +1306,7 @@ if (!dodged) {
             result.damage
         );
 }
-
+hunt.wildAttackCount += 1;
         // Player defeated
         if (player.currentHp <= 0) {
 
