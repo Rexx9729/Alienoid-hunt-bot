@@ -202,7 +202,7 @@ bot.telegram.setMyCommands([
     { command: 'start', description: 'Start Alienoid Hunt' },
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
-    { command: 'bag', description: 'View your collected aliens' },
+    { command: 'alist', description: 'View your collected aliens' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
@@ -210,7 +210,7 @@ bot.telegram.setMyCommands([
     { command: 'trade', description: 'Trade aliens with another player' },
     { command: 'give', description: 'Give an item to another player' },
     { command: 'donate', description: 'Donate a scan to another player' },
-    { command: 'hunt', description: 'Hunt a wild alien' },
+    
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
     scope: { type: 'all_private_chats' }
@@ -228,6 +228,7 @@ bot.telegram.setMyCommands([
     { command: 'trade', description: 'Trade aliens with another player' },
     { command: 'give', description: 'Give an item to another player' },
     { command: 'donate', description: 'Donate a scan to another player' },
+    { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
     scope: { type: 'all_group_chats' }
@@ -861,7 +862,7 @@ function buildBagMessage(user, page = 0) {
 
 // ==================== /BAG ====================
 
-bot.command(['bag', 'aliens'], async (ctx) => {
+bot.command(['alist', 'aliens'], async (ctx) => {
 
     try {
 
@@ -889,15 +890,15 @@ bot.command(['bag', 'aliens'], async (ctx) => {
             buttons.push([
                 {
                     text: '⬅️ Previous',
-                    callback_data: 'bag_page_0'
+                    callback_data: 'alist_page_0'
                 },
                 {
                     text: `Page 1/${totalPages}`,
-                    callback_data: 'bag_current'
+                    callback_data: 'alist_current'
                 },
                 {
                     text: 'Next ➡️',
-                    callback_data: 'bag_page_1'
+                    callback_data: 'alist_page_1'
                 }
             ]);
 
@@ -916,7 +917,7 @@ bot.command(['bag', 'aliens'], async (ctx) => {
     } catch (error) {
 
         console.error(
-            '❌ /bag error:',
+            '❌ /alist error:',
             error
         );
 
@@ -929,7 +930,7 @@ bot.command(['bag', 'aliens'], async (ctx) => {
 
 // ==================== BAG PAGINATION ====================
 
-bot.action(/^bag_page_(\d+)$/, async (ctx) => {
+bot.action(/^alist_page_(\d+)$/, async (ctx) => {
 
     try {
 
@@ -966,14 +967,14 @@ bot.action(/^bag_page_(\d+)$/, async (ctx) => {
             row.push({
                 text: '⬅️ Previous',
                 callback_data:
-                    `bag_page_${safePage - 1}`
+                    `alist_page_${safePage - 1}`
             });
         }
 
         row.push({
             text:
                 `Page ${safePage + 1}/${totalPages}`,
-            callback_data: 'bag_current'
+            callback_data: 'alist_current'
         });
 
         if (safePage < totalPages - 1) {
@@ -981,7 +982,7 @@ bot.action(/^bag_page_(\d+)$/, async (ctx) => {
             row.push({
                 text: 'Next ➡️',
                 callback_data:
-                    `bag_page_${safePage + 1}`
+                    `alist_page_${safePage + 1}`
             });
         }
 
@@ -1004,7 +1005,7 @@ bot.action(/^bag_page_(\d+)$/, async (ctx) => {
     } catch (error) {
 
         console.error(
-            '❌ Bag pagination error:',
+            '❌ alist pagination error:',
             error
         );
 
@@ -1018,7 +1019,7 @@ bot.action(/^bag_page_(\d+)$/, async (ctx) => {
 
 // ==================== BAG CURRENT PAGE ====================
 
-bot.action('bag_current', async (ctx) => {
+bot.action('alist_current', async (ctx) => {
 
     return ctx.answerCbQuery(
         '📖 You are already on this page.'
