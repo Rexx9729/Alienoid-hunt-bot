@@ -146,7 +146,46 @@ function getFirstTurn(playerAlien, wildAlien) {
     return 'wild';
 }
 
+// ==================== DODGE SYSTEM ====================
 
+const DODGE_CHANCES = {
+    faster: 0.25,
+    same: 0.20,
+    slower: 0.15
+};
+
+function getDodgeChance(defender, attacker) {
+
+    const defenderSpeed =
+        Number(defender?.speed || 0);
+
+    const attackerSpeed =
+        Number(attacker?.speed || 0);
+
+    if (defenderSpeed > attackerSpeed) {
+        return DODGE_CHANCES.faster;
+    }
+
+    if (defenderSpeed === attackerSpeed) {
+        return DODGE_CHANCES.same;
+    }
+
+    return DODGE_CHANCES.slower;
+}
+
+function rollDodge(defender, attacker) {
+
+    const chance =
+        getDodgeChance(
+            defender,
+            attacker
+        );
+
+    return {
+        dodged: Math.random() < chance,
+        chance
+    };
+}
 // ==================== CAPTURE BONUS ====================
 
 function getCaptureBonus(maxHp, currentHp) {
@@ -212,6 +251,8 @@ module.exports = {
     getIncomingDamageMultiplier,
     calculateHealerxRecovery,
     getFirstTurn,
+    getDodgeChance,
+    rollDodge,
     getCaptureBonus,
     createHpBar
 };
