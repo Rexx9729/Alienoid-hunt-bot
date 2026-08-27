@@ -253,6 +253,7 @@ bot.telegram.setMyCommands([
     { command: 'inventory', description: 'View your items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
+    { command: 'stats', description: 'View your alien stats' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
@@ -273,6 +274,7 @@ bot.telegram.setMyCommands([
     { command: 'inventory', description: 'View your items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
+    { command: 'stats', description: 'View your alien stats' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
@@ -1675,6 +1677,223 @@ bot.action('merge_confirm', async (ctx) => {
         );
     }
 });
+// ==================== ALIEN STATS ====================
+
+// /stats alienname
+// /stats alienname 1s
+// /stats alienname 2s
+// /stats alienname 3s
+
+bot.command('stats', async (ctx) => {
+
+    try {
+
+        const userId = ctx.from.id;
+
+        const user =
+            await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (!user.aliens || user.aliens.length === 0) {
+            return ctx.reply(
+                '🎒 Your alien collection is empty!'
+            );
+        }
+
+        const input =
+            ctx.message.text
+                .trim()
+                .replace(/^\/stats(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/stats Goop\n' +
+                '/stats Goop 1s\n' +
+                '/stats Goop 2s\n' +
+                '/stats Goop 3s'
+            );
+        }
+
+        // ==================== STAR LEVEL ====================
+
+        let star = 0;
+
+        let alienName =
+            input;
+
+        const starMatch =
+            input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+
+            star =
+                Number(
+                    starMatch[1].charAt(0)
+                );
+
+            alienName =
+                input
+                    .replace(
+                        /\s+[123]s$/i,
+                        ''
+                    )
+                    .trim();
+        }
+
+        if (!alienName) {
+
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // ==================== FIND USER'S ALIEN ====================
+
+        const alien =
+            user.aliens.find(a => {
+
+                const nameMatch =
+                    String(
+                        a.name || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                const nicknameMatch =
+                    String(
+                        a.nickname || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                return (
+                    (nameMatch || nicknameMatch) &&
+                    Number(a.star || 0) === star
+                );
+            });
+
+        if (!alien) {
+
+            const stars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} was not found in your collection.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        // ==================== DISPLAY ====================
+
+        const displayName =
+            star > 0
+                ? `${'⭐'.repeat(star)} ${alien.name}`
+                : alien.name;
+
+        const attacks =
+            Array.isArray(alien.attacks)
+                ? alien.attacks
+                : [];
+
+        let attackText = '';
+
+        if (attacks.length) {
+
+            attacks.forEach(
+                (attack, index) => {
+
+                    const attackName =
+                        attack.name ||
+                        `Attack ${index + 1}`;
+
+                    const damage =
+                        Number(
+                            attack.damage ??
+                            attack.baseDamage ??
+                            0
+                        );
+
+                    attackText +=
+                        `${index + 1}. ` +
+                        `${attackName} — ` +
+                        `${damage} DMG\n`;
+                }
+            );
+
+            attackText =
+                attackText.trimEnd();
+
+        } else {
+
+            attackText =
+                'No attacks available.';
+        }
+
+        const statsMessage =
+`<b>${displayName} INFO</b>
+──────────────────
+⭐ Rarity: ${alien.rarity || 'Unknown'}
+🌌 Element: ${alien.element || 'Unknown'}
+
+❤️ HP                : ${Number(alien.maxHp || alien.hp || 0)}
+⚔️ Base Attack: ${Number(alien.atk || alien.baseAttack || 0)}
+🛡️ Defense       : ${Number(alien.def || alien.defense || 0)}
+⚡ Speed           : ${Number(alien.speed || 0)}
+──────────────────
+🥊 <b>ATTACKS</b>
+
+${attackText}
+──────────────────`;
+
+        // ==================== IMAGE ====================
+
+        const imageFileId =
+            alien.fileId ||
+            alien.imageFileId ||
+            '';
+
+        if (imageFileId) {
+
+            return ctx.replyWithPhoto(
+                imageFileId,
+                {
+                    caption:
+                        statsMessage,
+
+                    parse_mode:
+                        'HTML'
+                }
+            );
+        }
+
+        return ctx.reply(
+            statsMessage,
+            {
+                parse_mode:
+                    'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /stats error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load alien stats.'
+        );
+    }
+});
 // ==================== ALIEN DECK — SET / OUT ====================
 
 // /set alienname
@@ -2772,6 +2991,7 @@ View your collected aliens.
 /merge <alien>
 Merge 3 identical aliens to increase Star level.
 
+/set <aline> for adding alien to active deck use use /set <alien 1s> for adding star aliens in deck 1s = ⭐ 2s = ⭐⭐ 3s = ⭐⭐⭐.
 /hunt
 Hunt a wild alien, capture it or defeat it.
 
