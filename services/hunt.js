@@ -10,6 +10,8 @@ const {
 
 const {
     calculateDamage,
+    getDodgeChance,
+rollDodge,
     getIncomingDamageMultiplier,
     calculateHealerxRecovery,
     getFirstTurn,
@@ -636,6 +638,10 @@ const spawned =
                 scansUsed: 0,
 
                 paused: false,
+                dodgeUsed: {
+    player: false,
+    wild: false
+},
 
                 startedAt: Date.now()
             };
@@ -1118,22 +1124,47 @@ if (hunt.stage !== 'spawned') {
         const attack =
             player.attacks[attackIndex];
 
-        const result =
-            calculateDamage(
-                player,
-                wild,
-                attack
-            );
+        let result =
+    calculateDamage(
+        player,
+        wild,
+        attack
+    );
 
-        wild.currentHp =
-            Math.max(
-                0,
-                wild.currentHp - result.damage
-            );
+let dodged = false;
+
+if (!hunt.dodgeUsed.wild) {
+
+    const dodgeResult =
+        rollDodge(
+            wild,
+            player
+        );
+
+    if (dodgeResult.dodged) {
+
+        dodged = true;
+
+        hunt.dodgeUsed.wild = true;
+
+        result.damage = 0;
+    }
+}
+
+if (!dodged) {
+
+    wild.currentHp =
+        Math.max(
+            0,
+            wild.currentHp - result.damage
+        );
+}
 
         await ctx.answerCbQuery(
-            `⚔️ ${attack.name}: ${result.damage} DMG`
-        );
+    dodged
+        ? `💨 ${wild.name} dodged the attack!`
+        : `⚔️ ${attack.name}: ${result.damage} DMG`
+);
 
         // Wild defeated
         if (wild.currentHp <= 0) {
@@ -1238,12 +1269,35 @@ if (hunt.stage !== 'spawned') {
                 )
             );
 
-        player.currentHp =
-            Math.max(
-                0,
-                player.currentHp -
-                result.damage
-            );
+        let dodged = false;
+
+if (!hunt.dodgeUsed.player) {
+
+    const dodgeResult =
+        rollDodge(
+            player,
+            wild
+        );
+
+    if (dodgeResult.dodged) {
+
+        dodged = true;
+
+        hunt.dodgeUsed.player = true;
+
+        result.damage = 0;
+    }
+}
+
+if (!dodged) {
+
+    player.currentHp =
+        Math.max(
+            0,
+            player.currentHp -
+            result.damage
+        );
+}
 
         // Player defeated
         if (player.currentHp <= 0) {
@@ -1283,7 +1337,9 @@ return;
                 `\n\n` +
                 `👽 Wild alien used ` +
                 `<b>${attack.name}</b>\n` +
-                `💥 Damage: <b>${result.damage}</b>`,
+            dodged
+    ? `💨 <b>${getAlienDisplayName(player)}</b> dodged the attack!`
+    : `💥 Damage: <b>${result.damage}</b>`
                 {
                     parse_mode: 'HTML',
                     reply_markup:
