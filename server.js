@@ -221,7 +221,7 @@ bot.telegram.setMyCommands([
     { command: 'start', description: 'Start Alienoid Hunt' },
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
-    { command: 'bag', description: 'View your collected aliens' },
+    { command: 'alist', description: 'View your collected aliens' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
