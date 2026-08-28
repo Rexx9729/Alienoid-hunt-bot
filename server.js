@@ -2938,13 +2938,38 @@ bot.command('agive', async (ctx) => {
         }
 
         // Get alien name
-        const args =
-            ctx.message.text
-                .trim()
-                .split(/\s+/);
+        // Get alien name + optional star selector
+const args =
+    ctx.message.text
+        .trim()
+        .split(/\s+/);
 
-        const alienName =
-            args.slice(1).join(' ').trim();
+let alienName =
+    args.slice(1).join(' ').trim();
+
+let star = 0;
+
+// /agive Goop 1s
+// /agive Goop 2s
+// /agive Goop 3s
+const starMatch =
+    alienName.match(/\s+([123]s)$/i);
+
+if (starMatch) {
+
+    star =
+        Number(
+            starMatch[1].charAt(0)
+        );
+
+    alienName =
+        alienName
+            .replace(
+                /\s+[123]s$/i,
+                ''
+            )
+            .trim();
+}
 
         if (!alienName) {
             return ctx.reply(
@@ -2987,16 +3012,30 @@ bot.command('agive', async (ctx) => {
         }
 
         // Find ONE matching alien
-        const alienIndex =
-            sender.aliens.findIndex(
-                alien =>
-                    String(
-                        alien.nickname ||
-                        alien.name ||
-                        ''
-                    ).toLowerCase() ===
-                    alienName.toLowerCase()
+        // Find ONE matching alien by name + exact star
+const alienIndex =
+    sender.aliens.findIndex(
+        alien => {
+
+            const nameMatch =
+                String(
+                    alien.nickname ||
+                    alien.name ||
+                    ''
+                ).toLowerCase() ===
+                alienName.toLowerCase();
+
+            const starMatch =
+                Number(
+                    alien.star || 0
+                ) === star;
+
+            return (
+                nameMatch &&
+                starMatch
             );
+        }
+    );
 
         if (alienIndex === -1) {
             return ctx.reply(
