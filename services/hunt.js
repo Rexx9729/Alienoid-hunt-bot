@@ -1430,9 +1430,7 @@ return;
 );
                 
             
-       getBattleKeyboard(hunt)
-                
-            );
+    
 
         } catch (error) {
 
