@@ -1544,9 +1544,8 @@ bot.action('hunt_healerx', async (ctx) => {
 );
         
     
-                getBattleKeyboard(hunt)
-        
-    );
+
+
 
     // Wild gets the next turn
     await executeWildTurn(ctx);
