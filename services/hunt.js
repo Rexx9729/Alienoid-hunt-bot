@@ -95,7 +95,36 @@ function clearHuntSession(ctx) {
         ctx.session.hunt = null;
     }
 }
+// ==================== HUNT MESSAGE EDIT HELPER ====================
 
+async function editHuntMessage(
+    ctx,
+    hunt,
+    text,
+    keyboard
+) {
+
+    const options = {
+        parse_mode: 'HTML'
+    };
+
+    if (keyboard) {
+        options.reply_markup = keyboard;
+    }
+
+    if (hunt?.wildAlien?.imageFileId) {
+
+        return ctx.editMessageCaption(
+            text,
+            options
+        );
+    }
+
+    return ctx.editMessageText(
+        text,
+        options
+    );
+}
 
 // ==================== HUNT MAIN MESSAGE ====================
 
@@ -741,14 +770,12 @@ bot.action('hunt_scan', async (ctx) => {
 
     await ctx.answerCbQuery();
 
-    await ctx.editMessageText(
-        buildScanMessage(hunt),
-        {
-            parse_mode: 'HTML',
-            reply_markup:
-                getScanKeyboard(user, hunt)
-        }
-    );
+    await editHuntMessage(
+    ctx,
+    hunt,
+    buildScanMessage(hunt),
+    getScanKeyboard(user, hunt)
+);
 });
     // ==================== SCAN ATTEMPT ====================
 
@@ -866,14 +893,12 @@ bot.action('hunt_scan_back', async (ctx) => {
 
         hunt.paused = false;
 
-        await ctx.editMessageText(
-            buildBattleMessage(hunt),
-            {
-                parse_mode: 'HTML',
-                reply_markup:
-                    getBattleKeyboard(hunt)
-            }
-        );
+        await editHuntMessage(
+    ctx,
+    hunt,
+    buildHuntMessage(hunt),
+    getMainHuntKeyboard()
+);
 
         return;
     }
@@ -1004,6 +1029,8 @@ if (hunt.stage !== 'spawned') {
         await ctx.answerCbQuery();
 
         await ctx.editMessageText(
+            ctx,
+            hunt,
             buildDeckSelectionMessage(user),
             {
                 parse_mode: 'HTML',
@@ -1113,14 +1140,12 @@ if (hunt.stage !== 'spawned') {
 
         await ctx.answerCbQuery();
 
-        await ctx.editMessageText(
-            buildBattleMessage(hunt),
-            {
-                parse_mode: 'HTML',
-                reply_markup:
-                    getBattleKeyboard(hunt)
-            }
-        );
+        await editHuntMessage(
+    ctx,
+    hunt,
+    buildBattleMessage(hunt),
+    getBattleKeyboard(hunt)
+);
 
         // Wild alien attacks immediately
         // if it has the higher speed.
@@ -1238,15 +1263,13 @@ hunt.playerAttackCount += 1;
         // Player used turn
         hunt.turn = 'wild';
 
-        await ctx.editMessageText(
-            buildBattleMessage(hunt) +
-            `\n\n⚔️ You dealt <b>${result.damage}</b> damage.`,
-            {
-                parse_mode: 'HTML',
-                reply_markup:
-                    getBattleKeyboard(hunt)
-            }
-        );
+        await editHuntMessage(
+    ctx,
+    hunt,
+    buildBattleMessage(hunt) +
+    `\n\n⚔️ You dealt <b>${result.damage}</b> damage.`,
+    getBattleKeyboard(hunt)
+);
 
         // Wild turn
         await executeWildTurn(ctx);
@@ -1397,6 +1420,8 @@ return;
         try {
 
             await ctx.editMessageText(
+                ctx,
+                hunt,
                 buildBattleMessage(hunt) +
                 `\n\n` +
                 `👽 Wild alien used ` +
@@ -1406,11 +1431,10 @@ return;
     ? `💨 <b>${getAlienDisplayName(player)}</b> dodged the attack!`
     : `💥 Damage: <b>${result.damage}</b>`
                     ),
-                {
-                    parse_mode: 'HTML',
-                    reply_markup:
-                        getBattleKeyboard(hunt)
-                }
+                
+            
+       getBattleKeyboard(hunt)
+                
             );
 
         } catch (error) {
@@ -1516,14 +1540,15 @@ bot.action('hunt_healerx', async (ctx) => {
     );
 
     await ctx.editMessageText(
+        ctx,
+        hunt,
         buildBattleMessage(hunt) +
         `\n\n🧪 <b>HealerX</b> restored ` +
         `<b>${actualRecovery} HP</b>.`,
-        {
-            parse_mode: 'HTML',
-            reply_markup:
+        
+    
                 getBattleKeyboard(hunt)
-        }
+        
     );
 
     // Wild gets the next turn
