@@ -424,6 +424,8 @@ await user.save();
         );
 
         await ctx.editMessageText(
+            ctx,
+            hunt,
             `🎉 <b>ALIEN CAPTURED!</b>\n\n` +
 
             `👽 <b>${wild.name}</b>\n` +
@@ -440,9 +442,9 @@ await user.save();
         : `📈 Hunt progression continues.\n` +
           `📈 Progress: ${user.huntProgress}`
 }`,
-            {
-                parse_mode: 'HTML'
-            }
+            
+            
+            
         );
 
         clearHuntSession(ctx);
