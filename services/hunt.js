@@ -679,13 +679,18 @@ wildAttackCount: 0,
                 startedAt: Date.now()
             };
 
-            return ctx.replyWithHTML(
-                buildHuntMessage(ctx.session.hunt),
-                {
-                    reply_markup:
-                        getMainHuntKeyboard()
-                }
-            );
+            return ctx.replyWithPhoto(
+    ctx.session.hunt.wildAlien.imageFileId,
+    {
+        caption:
+            buildHuntMessage(
+                ctx.session.hunt
+            ),
+        parse_mode: 'HTML',
+        reply_markup:
+            getMainHuntKeyboard()
+    }
+);
 
         } catch (error) {
 
