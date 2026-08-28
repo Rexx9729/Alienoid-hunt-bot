@@ -921,20 +921,23 @@ clearHuntSession(ctx);
             '🏃 Hunt cancelled.'
         );
 
-        try {
-            await ctx.editMessageText(
-                '🏃 <b>YOU RAN AWAY!</b>\n\n' +
-                'The wild alien escaped.',
-                {
-                    parse_mode: 'HTML'
-                }
-            );
-        } catch (error) {
-            console.error(
-                'Run message error:',
-                error
-            );
+try {
+    await ctx.editMessageCaption(
+        '🏃 <b>YOU RAN AWAY!</b>\n\n' +
+        'The wild alien escaped.',
+        {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: []
+            }
         }
+    );
+} catch (error) {
+    console.error(
+        'Run message error:',
+        error
+    );
+}
     });
 
 
