@@ -254,6 +254,7 @@ bot.telegram.setMyCommands([
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'stats', description: 'View your alien stats' },
+    { command: 'check', description: 'Check alien database info' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
@@ -275,6 +276,7 @@ bot.telegram.setMyCommands([
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'stats', description: 'View your alien stats' },
+    { command: 'check', description: 'Check alien database info' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
@@ -1911,6 +1913,159 @@ ${attackText}
 
         return ctx.reply(
             '❌ Could not load alien stats.'
+        );
+    }
+});
+
+// ==================== /CHECK — GLOBAL ALIEN INFO ====================
+
+bot.command('check', async (ctx) => {
+
+    try {
+
+        const input =
+            ctx.message.text
+                .trim()
+                .replace(
+                    /^\/check(?:@\w+)?\s*/i,
+                    ''
+                )
+                .trim();
+
+        if (!input) {
+
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Example:\n' +
+                '/check Goop'
+            );
+        }
+
+        // ==================== FIND ALIEN IN DATABASE ====================
+
+        const alien =
+            await Alien.findOne({
+                name: {
+                    $regex:
+                        `^${input.replace(
+                            /[.*+?^${}()|[\]\\]/g,
+                            '\\$&'
+                        )}$`,
+                    $options: 'i'
+                }
+            });
+
+        if (!alien) {
+
+            return ctx.reply(
+                `❌ Alien "${input}" was not found in the Alienoid database.`
+            );
+        }
+
+        // ==================== GLOBAL OWNED ====================
+        // Counts UNIQUE USERS who own this alien.
+        // Multiple copies by the same user count only once.
+
+        const safeName =
+            String(alien.name)
+                .replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    '\\$&'
+                );
+
+        const globalOwned =
+            await User.countDocuments({
+                aliens: {
+                    $elemMatch: {
+                        name: {
+                            $regex:
+                                `^${safeName}$`,
+                            $options: 'i'
+                        }
+                    }
+                }
+            });
+
+        // ==================== ATTACKS ====================
+
+        let attackText =
+            'No attacks available.';
+
+        if (
+            Array.isArray(alien.attacks) &&
+            alien.attacks.length
+        ) {
+
+            attackText =
+                alien.attacks
+                    .map(
+                        (attack, index) =>
+                            `${index + 1}. ` +
+                            `${attack.name} — ` +
+                            `${Number(
+                                attack.damage || 0
+                            )} DMG`
+                    )
+                    .join('\n');
+        }
+
+        // ==================== DISPLAY ====================
+
+        const statsMessage =
+`<b>${alien.name} INFO</b>
+──────────────────
+⭐ Rarity: ${alien.rarity || 'Unknown'}
+🌌 Element: ${alien.element || 'Unknown'}
+
+❤️ HP                : ${Number(alien.maxHp || 0)}
+⚔️ Base Attack: ${Number(alien.baseAttack || 0)}
+🛡️ Defense       : ${Number(alien.defense || 0)}
+⚡ Speed           : ${Number(alien.speed || 0)}
+──────────────────
+🥊 <b>ATTACKS</b>
+
+${attackText}
+──────────────────
+🌍 <b>Global Owned:</b> ${globalOwned} users`;
+
+        // ==================== IMAGE ====================
+
+        const imageFileId =
+            alien.imageFileId ||
+            alien.fileId ||
+            '';
+
+        if (imageFileId) {
+
+            return ctx.replyWithPhoto(
+                imageFileId,
+                {
+                    caption:
+                        statsMessage,
+
+                    parse_mode:
+                        'HTML'
+                }
+            );
+        }
+
+        return ctx.reply(
+            statsMessage,
+            {
+                parse_mode:
+                    'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /check error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load alien database information.'
         );
     }
 });
