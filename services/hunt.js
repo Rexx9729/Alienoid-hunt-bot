@@ -371,9 +371,23 @@ async function captureWildAlien(ctx, User, scanType) {
         });
 
         // SUCCESS = RESET PROGRESSION
-        user.huntProgress = 0;
+        // ==================== PROGRESSION RESET RULE ====================
 
-        await user.save();
+// Legendary capture → reset
+// Cosmic capture → reset
+// God capture → reset
+// Basic/Common/Rare capture → continue
+
+const shouldResetProgress =
+    wild.rarity === 'Legendary' ||
+    wild.rarity === 'Cosmic' ||
+    wild.rarity === 'God';
+
+if (shouldResetProgress) {
+    user.huntProgress = 0;
+}
+
+await user.save();
 
         await ctx.answerCbQuery(
             '🎉 CAPTURE SUCCESS!',
@@ -390,8 +404,13 @@ async function captureWildAlien(ctx, User, scanType) {
             `🔍 Scan: ${scanType}\n` +
             `🎯 Capture Chance: ${chance}%\n\n` +
 
-            `🔥 Hunt progression has been reset.\n` +
-            `📈 Progress: 0`,
+            `${
+    shouldResetProgress
+        ? `🔥 Hunt progression has been reset.\n` +
+          `📈 Progress: 0`
+        : `📈 Hunt progression continues.\n` +
+          `📈 Progress: ${user.huntProgress}`
+}`,
             {
                 parse_mode: 'HTML'
             }
@@ -403,7 +422,13 @@ async function captureWildAlien(ctx, User, scanType) {
     }
 
     // ==================== CAPTURE FAILED ====================
+// God capture failed → progression resets
+if (wild.rarity === 'God') {
 
+    user.huntProgress = 0;
+
+    await user.save();
+}
     await ctx.answerCbQuery(
         '❌ Capture failed.',
         { show_alert: true }
@@ -474,13 +499,19 @@ async function finishWildDefeated(ctx) {
         }
 
         // Give Rupee reward
-        user.rupees += reward;
+        // Give Rupee reward
+user.rupees += reward;
 
-        // IMPORTANT:
-        // Defeat does NOT reset huntProgress.
-        // Only successful capture resets it.
+// ==================== PROGRESSION ====================
 
-        await user.save();
+// God encounter completed without capture → reset
+// Other rarities → progression continues
+
+if (wild.rarity === 'God') {
+    user.huntProgress = 0;
+}
+
+await user.save();
 
         await ctx.answerCbQuery(
             '🎉 Wild alien defeated!',
@@ -861,6 +892,23 @@ bot.action('hunt_scan_back', async (ctx) => {
                 '⚠️ No active hunt.'
             );
         }
+        const hunt =
+    ctx.session.hunt;
+
+if (hunt.wildAlien?.rarity === 'God') {
+
+    const user =
+        await User.findOne({
+            userId: ctx.from.id
+        });
+
+    if (user) {
+        user.huntProgress = 0;
+        await user.save();
+    }
+}
+
+clearHuntSession(ctx);
 
         clearHuntSession(ctx);
 
