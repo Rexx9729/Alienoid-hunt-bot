@@ -423,29 +423,26 @@ await user.save();
             { show_alert: true }
         );
 
-        await ctx.editMessageText(
-            ctx,
-            hunt,
-            `🎉 <b>ALIEN CAPTURED!</b>\n\n` +
+        await editHuntMessage(
+    ctx,
+    hunt,
+    `🎉 <b>ALIEN CAPTURED!</b>\n\n` +
 
-            `👽 <b>${wild.name}</b>\n` +
-            `⭐ Rarity: ${wild.rarity}\n` +
-            `🌌 Element: ${wild.element}\n\n` +
+    `👽 <b>${wild.name}</b>\n` +
+    `⭐ Rarity: ${wild.rarity}\n` +
+    `🌌 Element: ${wild.element}\n\n` +
 
-            `🔍 Scan: ${scanType}\n` +
-            `🎯 Capture Chance: ${chance}%\n\n` +
+    `🔍 Scan: ${scanType}\n` +
+    `🎯 Capture Chance: ${chance}%\n\n` +
 
-            `${
-    shouldResetProgress
-        ? `🔥 Hunt progression has been reset.\n` +
-          `📈 Progress: 0`
-        : `📈 Hunt progression continues.\n` +
-          `📈 Progress: ${user.huntProgress}`
-}`,
-            
-            
-            
-        );
+    `${
+        shouldResetProgress
+            ? `🔥 Hunt progression has been reset.\n` +
+              `📈 Progress: 0`
+            : `📈 Hunt progression continues.\n` +
+              `📈 Progress: ${user.huntProgress}`
+    }`
+);
 
         clearHuntSession(ctx);
 
@@ -465,17 +462,15 @@ if (wild.rarity === 'God') {
         { show_alert: true }
     );
 
-    await ctx.editMessageText(
-        buildScanMessage(hunt) +
-        `\n\n❌ <b>Capture failed.</b>\n` +
-        `🎯 Capture Chance: <b>${chance}%</b>\n\n` +
-        `The wild alien escaped the scan.`,
-        {
-            parse_mode: 'HTML',
-            reply_markup:
-                getScanKeyboard(user, hunt)
-        }
-    );
+    await editHuntMessage(
+    ctx,
+    hunt,
+    buildScanMessage(hunt) +
+    `\n\n❌ <b>Capture failed.</b>\n` +
+    `🎯 Capture Chance: <b>${chance}%</b>\n\n` +
+    `The wild alien escaped the scan.`,
+    getScanKeyboard(user, hunt)
+);
 }
 // ==================== WILD ALIEN DEFEATED ====================
 
@@ -549,21 +544,23 @@ await user.save();
             { show_alert: true }
         );
 
-        await ctx.editMessageText(
-            `⚔️ <b>WILD ALIEN DEFEATED!</b>\n\n` +
+        await editHuntMessage(
+    ctx,
+    hunt,
+    `⚔️ <b>WILD ALIEN DEFEATED!</b>\n\n` +
 
-            `👽 <b>${wild.name}</b>\n` +
-            `⭐ Rarity: <b>${wild.rarity}</b>\n` +
-            `🌌 Element: <b>${wild.element}</b>\n\n` +
+    `👽 <b>${wild.name}</b>\n` +
+    `⭐ Rarity: <b>${wild.rarity}</b>\n` +
+    `🌌 Element: <b>${wild.element}</b>\n\n` +
 
-            `💰 Hunt Reward: <b>+₹${reward}</b>\n` +
-            `💵 Balance: <b>₹${user.rupees}</b>\n\n` +
+    `💰 Hunt Reward: <b>+₹${reward}</b>\n` +
+    `💵 Balance: <b>₹${user.rupees}</b>\n\n` +
 
-            `📈 Hunt Progress: <b>${user.huntProgress || 0}</b>\n` +
-            `➡️ Progress continues.\n\n` +
+    `📈 Hunt Progress: <b>${user.huntProgress || 0}</b>\n` +
+    `➡️ Progress continues.\n\n` +
 
-            `🏁 Hunt completed.`
-        );
+    `🏁 Hunt completed.`
+);
 
         // End this hunt only.
         // huntProgress remains in database.
@@ -906,14 +903,12 @@ bot.action('hunt_scan_back', async (ctx) => {
     }
 
     // Scan from spawn screen
-    await ctx.editMessageText(
-        buildHuntMessage(hunt),
-        {
-            parse_mode: 'HTML',
-            reply_markup:
-                getMainHuntKeyboard()
-        }
-    );
+    await editHuntMessage(
+    ctx,
+    hunt,
+    buildHuntMessage(hunt),
+    getMainHuntKeyboard()
+);
 });
     // ==================== RUN ====================
 
@@ -942,7 +937,7 @@ if (hunt.wildAlien?.rarity === 'God') {
 
 clearHuntSession(ctx);
 
-        clearHuntSession(ctx);
+
 
         await ctx.answerCbQuery(
             '🏃 Hunt cancelled.'
@@ -1030,42 +1025,39 @@ if (hunt.stage !== 'spawned') {
 
         await ctx.answerCbQuery();
 
-        await ctx.editMessageText(
-            ctx,
-            hunt,
-            buildDeckSelectionMessage(user),
-            {
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: '1',
-                                callback_data: 'hunt_select_0'
-                            },
-                            {
-                                text: '2',
-                                callback_data: 'hunt_select_1'
-                            },
-                            {
-                                text: '3',
-                                callback_data: 'hunt_select_2'
-                            },
-                            {
-                                text: '4',
-                                callback_data: 'hunt_select_3'
-                            }
-                        ],
-                        [
-                            {
-                                text: '🏃 Run',
-                                callback_data: 'hunt_run'
-                            }
-                        ]
-                    ]
+        await editHuntMessage(
+    ctx,
+    hunt,
+    buildDeckSelectionMessage(user),
+    {
+        inline_keyboard: [
+            [
+                {
+                    text: '1',
+                    callback_data: 'hunt_select_0'
+                },
+                {
+                    text: '2',
+                    callback_data: 'hunt_select_1'
+                },
+                {
+                    text: '3',
+                    callback_data: 'hunt_select_2'
+                },
+                {
+                    text: '4',
+                    callback_data: 'hunt_select_3'
                 }
-            }
-        );
+            ],
+            [
+                {
+                    text: '🏃 Run',
+                    callback_data: 'hunt_run'
+                }
+            ]
+        ]
+    }
+);
     });
 
 
@@ -1395,15 +1387,14 @@ hunt.wildAttackCount += 1;
 
 try {
 
-    await ctx.editMessageText(
+    await editHuntMessage(
+        ctx,
+        hunt,
         `👎🏻 <b>LOSE!! BETTER LUCK NEXT TIME</b>\n\n` +
 
         `🎊 <b>WINNER:</b> "${wild.name}"\n` +
 
-        `🎉 <b>REWARD:</b> —`,
-        {
-            parse_mode: 'HTML'
-        }
+        `🎉 <b>REWARD:</b> —`
     );
 
 } catch (error) {
@@ -1414,6 +1405,8 @@ try {
     );
 }
 
+clearHuntSession(ctx);
+
 return;
         }
 
@@ -1421,18 +1414,20 @@ return;
 
         try {
 
-            await ctx.editMessageText(
-                ctx,
-                hunt,
-                buildBattleMessage(hunt) +
-                `\n\n` +
-                `👽 Wild alien used ` +
-                `<b>${attack.name}</b>\n` +
-                (
-            dodged
-    ? `💨 <b>${getAlienDisplayName(player)}</b> dodged the attack!`
-    : `💥 Damage: <b>${result.damage}</b>`
-                    ),
+            await editHuntMessage(
+    ctx,
+    hunt,
+    buildBattleMessage(hunt) +
+    `\n\n` +
+    `👽 Wild alien used ` +
+    `<b>${attack.name}</b>\n` +
+    (
+        dodged
+            ? `💨 <b>${getAlienDisplayName(player)}</b> dodged the attack!`
+            : `💥 Damage: <b>${result.damage}</b>`
+    ),
+    getBattleKeyboard(hunt)
+);
                 
             
        getBattleKeyboard(hunt)
@@ -1541,12 +1536,14 @@ bot.action('hunt_healerx', async (ctx) => {
         `🧪 HealerX used! +${actualRecovery} HP`
     );
 
-    await ctx.editMessageText(
-        ctx,
-        hunt,
-        buildBattleMessage(hunt) +
-        `\n\n🧪 <b>HealerX</b> restored ` +
-        `<b>${actualRecovery} HP</b>.`,
+    await editHuntMessage(
+    ctx,
+    hunt,
+    buildBattleMessage(hunt) +
+    `\n\n🧪 <b>HealerX</b> restored ` +
+    `<b>${actualRecovery} HP</b>.`,
+    getBattleKeyboard(hunt)
+);
         
     
                 getBattleKeyboard(hunt)
