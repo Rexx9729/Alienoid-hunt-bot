@@ -576,7 +576,9 @@ await user.save();
         clearHuntSession(ctx);
 
         try {
-            await ctx.editMessageText(
+            await editHuntMessage(
+                ctx,
+                hunt,
                 '❌ Reward processing failed.\n\n' +
                 'The hunt has been ended safely.'
             );
