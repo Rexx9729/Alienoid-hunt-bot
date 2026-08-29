@@ -728,6 +728,7 @@ bot.start(async (ctx) => {
 
         def:
             Number(starter.defense || 0),
+        speed: Number(starter.speed || 0),
 
         element:
             starter.element || 'Physical',
@@ -3152,6 +3153,912 @@ const alienIndex =
         );
     }
 });
+// ==================== ALIEN TRADE ====================
+
+// /trade <giving alien> <taking alien>
+// Reply to another player's message.
+//
+// Examples:
+// /trade Fourarms Stinkfly
+// /trade Fourarms 1s Stinkfly
+// /trade Fourarms 2s Stinkfly 1s
+// /trade Fourarms 3s Stinkfly 2s
+
+const pendingTrades = new Map();
+
+const TRADE_TIMEOUT = 2 * 60 * 1000;
+
+
+// ==================== PARSE TRADE ALIEN ====================
+
+function parseTradeAlienPart(text) {
+
+    const match =
+        text.match(/\s+([123]s)$/i);
+
+    if (!match) {
+
+        return {
+            name: text.trim(),
+            star: 0
+        };
+    }
+
+    return {
+        name:
+            text
+                .replace(/\s+[123]s$/i, '')
+                .trim(),
+
+        star:
+            Number(
+                match[1].charAt(0)
+            )
+    };
+}
+
+
+// ==================== FIND TRADE SPLIT ====================
+
+function findTradePair(
+    args,
+    sender,
+    receiver
+) {
+
+    if (!args.length) {
+        return null;
+    }
+
+    /*
+     * Try every possible split.
+     *
+     * This allows multi-word alien names too.
+     *
+     * Example:
+     * /trade Alien X 1s Four Arms
+     */
+
+    for (
+        let split = 1;
+        split < args.length;
+        split++
+    ) {
+
+        const givingText =
+            args
+                .slice(0, split)
+                .join(' ')
+                .trim();
+
+        const takingText =
+            args
+                .slice(split)
+                .join(' ')
+                .trim();
+
+        const giving =
+            parseTradeAlienPart(
+                givingText
+            );
+
+        const taking =
+            parseTradeAlienPart(
+                takingText
+            );
+
+        if (
+            !giving.name ||
+            !taking.name
+        ) {
+            continue;
+        }
+
+        const senderAlien =
+            sender.aliens.find(alien => {
+
+                const nameMatch =
+                    String(
+                        alien.nickname ||
+                        alien.name ||
+                        ''
+                    ).toLowerCase() ===
+                    giving.name.toLowerCase();
+
+                return (
+                    nameMatch &&
+                    Number(alien.star || 0) ===
+                        giving.star
+                );
+            });
+
+        if (!senderAlien) {
+            continue;
+        }
+
+        const receiverAlien =
+            receiver.aliens.find(alien => {
+
+                const nameMatch =
+                    String(
+                        alien.nickname ||
+                        alien.name ||
+                        ''
+                    ).toLowerCase() ===
+                    taking.name.toLowerCase();
+
+                return (
+                    nameMatch &&
+                    Number(alien.star || 0) ===
+                        taking.star
+                );
+            });
+
+        if (!receiverAlien) {
+            continue;
+        }
+
+        return {
+            senderAlien,
+            receiverAlien,
+            giving,
+            taking
+        };
+    }
+
+    return null;
+}
+
+
+// ==================== TRADE COMMAND ====================
+
+bot.command('trade', async (ctx) => {
+
+    try {
+
+        const senderId =
+            ctx.from.id;
+
+        // Trade must be made by replying
+        // to another player's message.
+        if (
+            !ctx.message.reply_to_message ||
+            !ctx.message.reply_to_message.from
+        ) {
+
+            return ctx.reply(
+                `⚠️ Reply to the player you want to trade with.\n\n` +
+
+                `Use:\n` +
+                `/trade <your alien> <their alien>\n\n` +
+
+                `Examples:\n` +
+                `/trade Fourarms Stinkfly\n` +
+                `/trade Fourarms 1s Stinkfly`
+            );
+        }
+
+        const receiverId =
+            ctx.message.reply_to_message.from.id;
+
+        // Prevent self trade
+        if (
+            senderId === receiverId
+        ) {
+
+            return ctx.reply(
+                '❌ You cannot trade with yourself.'
+            );
+        }
+
+        const rawArgs =
+            ctx.message.text
+                .trim()
+                .replace(
+                    /^\/trade(?:@\w+)?\s*/i,
+                    ''
+                );
+
+        if (!rawArgs) {
+
+            return ctx.reply(
+                `⚠️ Enter both aliens.\n\n` +
+
+                `/trade Fourarms Stinkfly\n` +
+                `/trade Fourarms 1s Stinkfly\n` +
+                `/trade Fourarms 2s Stinkfly 1s`
+            );
+        }
+
+        const args =
+            rawArgs.split(/\s+/);
+
+        if (args.length < 2) {
+
+            return ctx.reply(
+                `⚠️ Enter both aliens.\n\n` +
+                `/trade Fourarms Stinkfly`
+            );
+        }
+
+        // Load both users
+        const sender =
+            await User.findOne({
+                userId: senderId
+            });
+
+        const receiver =
+            await User.findOne({
+                userId: receiverId
+            });
+
+        if (!sender) {
+
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (!receiver) {
+
+            return ctx.reply(
+                '❌ This player has not started Alienoid Hunt yet.'
+            );
+        }
+
+        if (
+            !sender.aliens ||
+            sender.aliens.length === 0
+        ) {
+
+            return ctx.reply(
+                '🎒 You do not have any aliens to trade.'
+            );
+        }
+
+        if (
+            !receiver.aliens ||
+            receiver.aliens.length === 0
+        ) {
+
+            return ctx.reply(
+                `❌ ${receiver.username || 'This player'} does not have any aliens to trade.`
+            );
+        }
+
+        // Find exact two aliens + star levels
+        const tradePair =
+            findTradePair(
+                args,
+                sender,
+                receiver
+            );
+
+        if (!tradePair) {
+
+            return ctx.reply(
+                `❌ Trade could not be created.\n\n` +
+
+                `Make sure:\n` +
+                `• You own the first alien.\n` +
+                `• The other player owns the second alien.\n` +
+                `• Star level is correct.\n\n` +
+
+                `Example:\n` +
+                `/trade Fourarms 1s Stinkfly 2s`
+            );
+        }
+
+        const {
+            senderAlien,
+            receiverAlien,
+            giving,
+            taking
+        } = tradePair;
+
+        // ==================== TRADE ID ====================
+
+        const tradeId =
+            new mongoose.Types.ObjectId()
+                .toString();
+
+        // ==================== STORE REQUEST ====================
+
+        pendingTrades.set(
+            tradeId,
+            {
+                status: 'pending',
+
+                senderId,
+                receiverId,
+
+                senderAlienId:
+                    senderAlien.alienId,
+
+                receiverAlienId:
+                    receiverAlien.alienId,
+
+                createdAt:
+                    Date.now()
+            }
+        );
+
+        // Auto-expire after 2 minutes
+        setTimeout(() => {
+
+            const trade =
+                pendingTrades.get(
+                    tradeId
+                );
+
+            if (
+                trade &&
+                trade.status === 'pending'
+            ) {
+
+                pendingTrades.delete(
+                    tradeId
+                );
+            }
+
+        }, TRADE_TIMEOUT);
+
+        const senderName =
+            sender.username ||
+            ctx.from.first_name ||
+            'Hunter';
+
+        const receiverName =
+            receiver.username ||
+            ctx.message.reply_to_message
+                .from
+                .first_name ||
+            'Hunter';
+
+        const senderStar =
+            Number(
+                senderAlien.star || 0
+            ) > 0
+                ? `${'⭐'.repeat(
+                    Number(senderAlien.star || 0)
+                )} `
+                : '';
+
+        const receiverStar =
+            Number(
+                receiverAlien.star || 0
+            ) > 0
+                ? `${'⭐'.repeat(
+                    Number(receiverAlien.star || 0)
+                )} `
+                : '';
+
+        const tradeMessage =
+`🔄 <b>TRADE REQUEST</b>
+
+${senderName}
+offers:
+<b>${senderStar}${senderAlien.nickname || senderAlien.name}</b>
+
+in exchange for:
+
+${receiverName}
+offers:
+<b>${receiverStar}${receiverAlien.nickname || receiverAlien.name}</b>
+
+Do you accept this trade?`;
+
+        return ctx.reply(
+            tradeMessage,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '✅ Accept',
+                                callback_data:
+                                    `trade_accept_${tradeId}`
+                            },
+                            {
+                                text: '❌ Refuse',
+                                callback_data:
+                                    `trade_refuse_${tradeId}`
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /trade error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Trade request failed due to a temporary error.'
+        );
+    }
+});
+
+
+// ==================== TRADE ACCEPT ====================
+
+bot.action(
+    /^trade_accept_(.+)$/,
+    async (ctx) => {
+
+        const tradeId =
+            ctx.match[1];
+
+        const trade =
+            pendingTrades.get(
+                tradeId
+            );
+
+        if (!trade) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This trade request has expired.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        // Only receiver can accept
+        if (
+            ctx.from.id !==
+            trade.receiverId
+        ) {
+
+            return ctx.answerCbQuery(
+                '❌ Only the receiving player can accept this trade.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        // Duplicate-click guard
+        if (
+            trade.status !== 'pending'
+        ) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This trade has already been processed.'
+            );
+        }
+
+        // Lock immediately
+        trade.status =
+            'processing';
+
+        pendingTrades.set(
+            tradeId,
+            trade
+        );
+
+        try {
+
+            const sender =
+                await User.findOne({
+                    userId:
+                        trade.senderId
+                });
+
+            const receiver =
+                await User.findOne({
+                    userId:
+                        trade.receiverId
+                });
+
+            if (
+                !sender ||
+                !receiver
+            ) {
+
+                pendingTrades.delete(
+                    tradeId
+                );
+
+                return ctx.answerCbQuery(
+                    '❌ One of the players could not be found.',
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            // Find exact alien instances again
+            // so the request cannot trade stale data.
+            const senderIndex =
+                sender.aliens.findIndex(
+                    alien =>
+                        alien.alienId ===
+                        trade.senderAlienId
+                );
+
+            const receiverIndex =
+                receiver.aliens.findIndex(
+                    alien =>
+                        alien.alienId ===
+                        trade.receiverAlienId
+                );
+
+            if (
+                senderIndex === -1 ||
+                receiverIndex === -1
+            ) {
+
+                pendingTrades.delete(
+                    tradeId
+                );
+
+                return ctx.answerCbQuery(
+                    '❌ One of the aliens is no longer available.',
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            const senderAlien =
+                sender.aliens[
+                    senderIndex
+                ];
+
+            const receiverAlien =
+                receiver.aliens[
+                    receiverIndex
+                ];
+
+            // Save copies for final message
+            const senderAlienName =
+                senderAlien.nickname ||
+                senderAlien.name ||
+                'Unknown Alien';
+
+            const receiverAlienName =
+                receiverAlien.nickname ||
+                receiverAlien.name ||
+                'Unknown Alien';
+
+            const senderStar =
+                Number(
+                    senderAlien.star || 0
+                ) > 0
+                    ? `${'⭐'.repeat(
+                        Number(senderAlien.star || 0)
+                    )} `
+                    : '';
+
+            const receiverStar =
+                Number(
+                    receiverAlien.star || 0
+                ) > 0
+                    ? `${'⭐'.repeat(
+                        Number(receiverAlien.star || 0)
+                    )} `
+                    : '';
+
+            const senderName =
+                sender.username ||
+                'Hunter';
+
+            const receiverName =
+                receiver.username ||
+                'Hunter';
+
+            // ==================== REMOVE FROM DECK ====================
+
+            if (
+                sender.deck?.length
+            ) {
+
+                sender.deck =
+                    sender.deck.filter(
+                        id =>
+                            id !==
+                            senderAlien.alienId
+                    );
+            }
+
+            if (
+                receiver.deck?.length
+            ) {
+
+                receiver.deck =
+                    receiver.deck.filter(
+                        id =>
+                            id !==
+                            receiverAlien.alienId
+                    );
+            }
+
+            // ==================== SWAP ALIENS ====================
+
+            sender.aliens.splice(
+                senderIndex,
+                1
+            );
+
+            receiver.aliens.splice(
+                receiverIndex,
+                1
+            );
+
+            // New unique IDs
+            const senderReceivedAlien = {
+
+                alienId:
+                    new mongoose.Types.ObjectId()
+                        .toString(),
+
+                name:
+                    receiverAlien.name ||
+                    receiverAlien.nickname ||
+                    'Unknown Alien',
+
+                nickname:
+                    receiverAlien.nickname ||
+                    receiverAlien.name ||
+                    'Unknown Alien',
+
+                rarity:
+                    receiverAlien.rarity,
+
+                star:
+                    Number(
+                        receiverAlien.star || 0
+                    ),
+
+                level:
+                    Number(
+                        receiverAlien.level || 1
+                    ),
+
+                hp:
+                    receiverAlien.hp,
+
+                maxHp:
+                    receiverAlien.maxHp,
+
+                atk:
+                    receiverAlien.atk,
+
+                def:
+                    receiverAlien.def,
+
+                speed:
+                    Number(
+                        receiverAlien.speed || 0
+                    ),
+
+                element:
+                    receiverAlien.element,
+
+                fileId:
+                    receiverAlien.fileId || ''
+            };
+
+            const receiverReceivedAlien = {
+
+                alienId:
+                    new mongoose.Types.ObjectId()
+                        .toString(),
+
+                name:
+                    senderAlien.name ||
+                    senderAlien.nickname ||
+                    'Unknown Alien',
+
+                nickname:
+                    senderAlien.nickname ||
+                    senderAlien.name ||
+                    'Unknown Alien',
+
+                rarity:
+                    senderAlien.rarity,
+
+                star:
+                    Number(
+                        senderAlien.star || 0
+                    ),
+
+                level:
+                    Number(
+                        senderAlien.level || 1
+                    ),
+
+                hp:
+                    senderAlien.hp,
+
+                maxHp:
+                    senderAlien.maxHp,
+
+                atk:
+                    senderAlien.atk,
+
+                def:
+                    senderAlien.def,
+
+                speed:
+                    Number(
+                        senderAlien.speed || 0
+                    ),
+
+                element:
+                    senderAlien.element,
+
+                fileId:
+                    senderAlien.fileId || ''
+            };
+
+            sender.aliens.push(
+                senderReceivedAlien
+            );
+
+            receiver.aliens.push(
+                receiverReceivedAlien
+            );
+
+            // Save both users
+            await sender.save();
+            await receiver.save();
+
+            // Mark completed BEFORE editing message
+            trade.status =
+                'completed';
+
+            pendingTrades.delete(
+                tradeId
+            );
+
+            await ctx.answerCbQuery(
+                '✅ Trade completed!'
+            );
+
+            return ctx.editMessageText(
+`🎊 <b>TRADE IS SUCCESSFUL</b>
+
+ℹ️ <b>Trade info:</b>
+
+🔄 ${senderName}
+gave ${senderStar}${senderAlienName} to
+•『 ${receiverName} 』•
+
+🔄 •『 ${receiverName} 』•
+gave ${receiverStar}${receiverAlienName} to
+${senderName}`,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: []
+                    }
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Trade accept error:',
+                error
+            );
+
+            // Unlock only if trade was not completed
+            const currentTrade =
+                pendingTrades.get(
+                    tradeId
+                );
+
+            if (
+                currentTrade &&
+                currentTrade.status ===
+                    'processing'
+            ) {
+
+                currentTrade.status =
+                    'pending';
+
+                pendingTrades.set(
+                    tradeId,
+                    currentTrade
+                );
+            }
+
+            return ctx.answerCbQuery(
+                '❌ Trade failed. Nothing was confirmed.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+    }
+);
+
+
+// ==================== TRADE REFUSE ====================
+
+bot.action(
+    /^trade_refuse_(.+)$/,
+    async (ctx) => {
+
+        const tradeId =
+            ctx.match[1];
+
+        const trade =
+            pendingTrades.get(
+                tradeId
+            );
+
+        if (!trade) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This trade request has expired.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        // Only receiver can refuse
+        if (
+            ctx.from.id !==
+            trade.receiverId
+        ) {
+
+            return ctx.answerCbQuery(
+                '❌ Only the receiving player can refuse this trade.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        // Duplicate-click guard
+        if (
+            trade.status !== 'pending'
+        ) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This trade has already been processed.'
+            );
+        }
+
+        // Lock immediately
+        trade.status =
+            'refused';
+
+        pendingTrades.set(
+            tradeId,
+            trade
+        );
+
+        pendingTrades.delete(
+            tradeId
+        );
+
+        await ctx.answerCbQuery(
+            'Trade refused.'
+        );
+
+        return ctx.editMessageText(
+`❌ <b>TRADE REFUSED</b>
+
+${ctx.from.first_name || 'Hunter'} refused the trade request.`,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: []
+                }
+            }
+        );
+    }
+);
 // ==================== HELP MENU ====================
 
 const helpKeyboard = {
