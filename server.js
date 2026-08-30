@@ -111,6 +111,79 @@ bot.use(
         defaultSession: () => ({})
     })
 );
+
+// ==================== GLOBAL CALLBACK DOUBLE-TAP GUARD ====================
+
+const activeCallbacks = new Set();
+const CALLBACK_COOLDOWN = 2000; // 2 seconds
+
+bot.use(async (ctx, next) => {
+
+    // Only protect Telegram inline-button callbacks
+    if (!ctx.callbackQuery) {
+        return next();
+    }
+
+    const userId = ctx.from?.id;
+    const messageId =
+        ctx.callbackQuery?.message?.message_id || 'inline';
+
+    const guardKey = `${userId}:${messageId}`;
+
+    // Ignore rapid repeated taps on the same message
+    if (activeCallbacks.has(guardKey)) {
+
+        try {
+            await ctx.answerCbQuery(
+                '⏳ Please wait...',
+                {
+                    show_alert: false
+                }
+            );
+        } catch (error) {
+            // Ignore callback answer errors
+        }
+
+        return;
+    }
+
+    // Lock callback
+    activeCallbacks.add(guardKey);
+
+    try {
+
+        // Continue to the actual button handler
+        await next();
+
+    } catch (error) {
+
+        console.error(
+            '❌ Callback handler error:',
+            error
+        );
+
+        try {
+            await ctx.answerCbQuery(
+                '❌ Something went wrong. Please try again.',
+                {
+                    show_alert: true
+                }
+            );
+        } catch (answerError) {
+            // Ignore callback answer errors
+        }
+
+    } finally {
+
+        // Unlock after short cooldown
+        setTimeout(() => {
+            activeCallbacks.delete(guardKey);
+        }, CALLBACK_COOLDOWN);
+    }
+});
+
+// ==================== END GLOBAL CALLBACK GUARD ====================
+
 registerHunt(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
 
