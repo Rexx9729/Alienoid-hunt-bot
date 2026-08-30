@@ -106,29 +106,45 @@ function attemptCapture(chance) {
 
 // ==================== RANDOM WILD ALIEN ====================
 // ==================== SPAWN RARITY FROM PROGRESSION ====================
-
 function getSpawnRarity(huntProgress) {
 
-    if (huntProgress >= SPAWN_THRESHOLDS.God) {
+    // Highest rarity milestone gets priority
+    if (
+        huntProgress % SPAWN_THRESHOLDS.God === 0 &&
+        huntProgress >= SPAWN_THRESHOLDS.God
+    ) {
         return 'God';
     }
 
-    if (huntProgress >= SPAWN_THRESHOLDS.Cosmic) {
+    if (
+        huntProgress % SPAWN_THRESHOLDS.Cosmic === 0 &&
+        huntProgress >= SPAWN_THRESHOLDS.Cosmic
+    ) {
         return 'Cosmic';
     }
 
-    if (huntProgress >= SPAWN_THRESHOLDS.Legendary) {
+    if (
+        huntProgress % SPAWN_THRESHOLDS.Legendary === 0 &&
+        huntProgress >= SPAWN_THRESHOLDS.Legendary
+    ) {
         return 'Legendary';
     }
 
-    if (huntProgress >= SPAWN_THRESHOLDS.Rare) {
+    if (
+        huntProgress % SPAWN_THRESHOLDS.Rare === 0 &&
+        huntProgress >= SPAWN_THRESHOLDS.Rare
+    ) {
         return 'Rare';
     }
 
-    if (huntProgress >= SPAWN_THRESHOLDS.Common) {
+    if (
+        huntProgress % SPAWN_THRESHOLDS.Common === 0 &&
+        huntProgress >= SPAWN_THRESHOLDS.Common
+    ) {
         return 'Common';
     }
 
+    // All non-milestone hunts spawn Basic
     return 'Basic';
 }
 
