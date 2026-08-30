@@ -986,13 +986,13 @@ if (
 
     await ctx.answerCbQuery();
 
-    await ctx.editMessageText(
+    await editHuntMessage(
+        ctx,
+        hunt,
         buildBattleMessage(hunt),
-        {
-            parse_mode: 'HTML',
-            reply_markup:
+        
                 getBattleKeyboard(hunt)
-        }
+        
     );
 
     // If somehow it is wild's turn,
