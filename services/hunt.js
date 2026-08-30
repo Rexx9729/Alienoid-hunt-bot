@@ -898,7 +898,7 @@ bot.action('hunt_scan_back', async (ctx) => {
     ctx,
     hunt,
     buildHuntMessage(hunt),
-    getMainHuntKeyboard()
+    getMainHuntKeyboard(hunt)
 );
 
         return;
@@ -1579,14 +1579,15 @@ bot.action('hunt_battle_back', async (ctx) => {
         '⏸️ Battle paused.'
     );
 
-    await ctx.editMessageText(
+    await editHuntMessage(
+        ctx,
+        hunt,
         buildHuntMessage(hunt) +
         `\n\n⏸️ <b>Battle Paused</b>`,
-        {
-            parse_mode: 'HTML',
-            reply_markup:
+        
+    
                 getMainHuntKeyboard()
-        }
+        
     );
 });
 
