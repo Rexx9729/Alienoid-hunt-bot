@@ -4,8 +4,7 @@ const {
     HUNT_COST,
     spawnWildAlien,
     getCaptureChance,
-    attemptCapture,
-    getHuntReward
+    attemptCapture
 } = require('./huntEngine');
 const {
     HUNT_WIN_REWARDS,
