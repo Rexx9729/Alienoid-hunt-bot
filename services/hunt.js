@@ -9,7 +9,7 @@ const {
 } = require('./huntEngine');
 const {
     HUNT_LOSE_REWARD
-} = require('../config/reward');
+} = require('../Config/Reward');
 const {
     calculateDamage,
     getDodgeChance,
