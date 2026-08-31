@@ -475,7 +475,7 @@ if (wild.rarity === 'God') {
 }
 // ==================== WILD ALIEN DEFEATED ====================
 
-async function finishWildDefeated(ctx) {
+async function finishWildDefeated(ctx, user) {
 
     const hunt = ctx.session?.hunt;
 
@@ -1268,7 +1268,7 @@ hunt.playerAttackCount += 1;
         // Wild defeated
 if (wild.currentHp <= 0) {
 
-    await finishWildDefeated(ctx);
+    await finishWildDefeated(ctx, user);
 
     return;
 }
