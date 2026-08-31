@@ -605,10 +605,10 @@ bot.command('removeadmin', async (ctx) => {
 bot.command('addalien', async (ctx) => {
 
     console.log('🔥 ADDALIEN COMMAND RECEIVED');
-    if (ctx.from.id !== OWNER_ID) {
+    if (!(await isAdmin(ctx.from.id))) {
     return ctx.reply(
         '❌ ACCESS DENIED\n\n' +
-        'Only the Alienoid owner can add new aliens.'
+        'Only Alienoid admins can add new aliens.'
     );
     }
     ctx.session ??= {};
