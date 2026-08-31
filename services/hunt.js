@@ -505,12 +505,29 @@ async function finishWildDefeated(ctx) {
             );
         }
 
-        // Calculate reward using existing Hunt Engine
-        const reward = Number(alien.huntRewardMin);
+        // Get the alien's exact hunt reward.
+// New aliens have this value stored by server.js.
+let reward = Number(alien.huntRewardMin);
+
+// Safety fallback for older alien records that were created
+// before huntRewardMin was stored in MongoDB.
+if (!Number.isFinite(reward)) {
+
+    const rewardByRarity = {
+        Basic: 80,
+        Common: 120,
+        Rare: 220,
+        Legendary: 520,
+        Cosmic: 1020,
+        God: 2020
+    };
+
+    reward = rewardByRarity[alien.rarity];
+}
 
 if (!Number.isFinite(reward)) {
     throw new Error(
-        `Invalid hunt reward in database for ${alien.name}: ${alien.huntRewardMin}`
+        `Invalid hunt reward for ${alien.name} (${alien.rarity}).`
     );
 }
 
