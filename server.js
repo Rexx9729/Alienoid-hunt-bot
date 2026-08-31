@@ -107,6 +107,80 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// ==================== REDEEM CODE MODEL ====================
+
+const redeemCodeSchema = new mongoose.Schema({
+
+    code: {
+        type: String,
+        required: true,
+        unique: true
+    },
+
+    reward: {
+        type: Number,
+        required: true,
+        min: 1
+    },
+
+    redeemLimit: {
+        type: Number,
+        required: true,
+        min: 1
+    },
+
+    redeemedUsers: {
+        type: [Number],
+        default: []
+    },
+
+    active: {
+        type: Boolean,
+        default: true
+    }
+
+}, {
+    timestamps: true
+});
+
+const RedeemCode =
+    mongoose.model(
+        'RedeemCode',
+        redeemCodeSchema
+    );
+
+// ==================== REDEEM CODE GENERATOR ====================
+
+function generateRedeemCode() {
+
+    const characters =
+        'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    function makePart() {
+
+        let part = '';
+
+        for (let i = 0; i < 4; i++) {
+
+            part +=
+                characters[
+                    Math.floor(
+                        Math.random() *
+                        characters.length
+                    )
+                ];
+        }
+
+        return part;
+    }
+
+    return (
+        `${makePart()}-` +
+        `${makePart()}-` +
+        `${makePart()}`
+    );
+}
+
 // ==================== ADMIN SYSTEM ====================
 
 async function isAdmin(userId) {
@@ -355,6 +429,7 @@ bot.telegram.setMyCommands([
     { command: 'check', description: 'Check alien database info' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
+    { command: 'redeem', description: 'Redeem an Alienoid reward code you can get codes from Alienoid support group' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
     { command: 'trade', description: 'Trade aliens with another player' },
@@ -376,6 +451,7 @@ bot.telegram.setMyCommands([
     { command: 'stats', description: 'View your alien stats' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
+    { command: 'redeem', description: 'Redeem an Alienoid reward code. you can get codes from Alienoid support group' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
     { command: 'trade', description: 'Trade aliens with another player' },
@@ -600,6 +676,361 @@ bot.command('removeadmin', async (ctx) => {
         );
     }
 });
+
+// ==================== /REDEEMCODE ====================
+
+bot.command('redeemcode', async (ctx) => {
+
+    try {
+
+        // OWNER ONLY
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ ACCESS DENIED\n\n' +
+                'Only the Alienoid owner can create redeem codes.'
+            );
+        }
+
+        const args =
+            ctx.message.text
+                .trim()
+                .split(/\s+/)
+                .slice(1);
+
+        if (args.length !== 2) {
+            return ctx.reply(
+                '⚠️ Invalid format.\n\n' +
+                'Use:\n' +
+                '/redeemcode <rupees> <user limit>\n\n' +
+                'Example:\n' +
+                '/redeemcode 1000 10'
+            );
+        }
+
+        const reward =
+            Number(args[0]);
+
+        const redeemLimit =
+            Number(args[1]);
+
+        if (
+            !Number.isInteger(reward) ||
+            reward <= 0
+        ) {
+            return ctx.reply(
+                '❌ Rupees must be a positive whole number.'
+            );
+        }
+
+        if (
+            !Number.isInteger(redeemLimit) ||
+            redeemLimit <= 0
+        ) {
+            return ctx.reply(
+                '❌ User redeem limit must be a positive whole number.'
+            );
+        }
+
+        let code;
+        let exists = true;
+
+        while (exists) {
+
+            code =
+                generateRedeemCode();
+
+            exists =
+                await RedeemCode.exists({
+                    code
+                });
+        }
+
+        await RedeemCode.create({
+
+            code,
+
+            reward,
+
+            redeemLimit,
+
+            redeemedUsers: [],
+
+            active: true
+        });
+
+        return ctx.reply(
+            `🎁 <b>REDEEM CODE GENERATED!</b>\n\n` +
+            `💰 Reward: <b>${reward.toLocaleString()} Rs</b>\n` +
+            `👥 Redeem limit: <b>${redeemLimit} users</b>\n` +
+            `🔒 One redeem per user\n\n` +
+            `🎟 Code:\n` +
+            `<code>${code}</code>\n\n` +
+            `📢 Share this code with your users!`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /redeemcode error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Failed to generate redeem code.'
+        );
+    }
+});
+
+// ==================== /REDEEM ====================
+
+bot.command('redeem', async (ctx) => {
+
+    try {
+
+        const args =
+            ctx.message.text
+                .trim()
+                .split(/\s+/)
+                .slice(1);
+
+        if (args.length !== 1) {
+            return ctx.reply(
+                '⚠️ Enter a valid redeem code.\n\n' +
+                'Example:\n' +
+                '/redeem XXXX-XXXX-XXXX'
+            );
+        }
+
+        const code =
+            args[0]
+                .toUpperCase()
+                .trim();
+
+        const userId =
+            Number(ctx.from.id);
+
+        // Find active code
+        const redeemCode =
+            await RedeemCode.findOne({
+                code,
+                active: true
+            });
+
+        if (!redeemCode) {
+            return ctx.reply(
+                '❌ Invalid or expired redeem code.'
+            );
+        }
+
+        // Same user already redeemed
+        if (
+            redeemCode.redeemedUsers.includes(
+                userId
+            )
+        ) {
+            return ctx.reply(
+                '⚠️ You have already redeemed this code!'
+            );
+        }
+
+        // Limit reached
+        if (
+            redeemCode.redeemedUsers.length >=
+            redeemCode.redeemLimit
+        ) {
+
+            redeemCode.active = false;
+
+            await redeemCode.save();
+
+            return ctx.reply(
+                '❌ Code limit reached!\n\n' +
+                'Stay active to grab new codes.'
+            );
+        }
+
+        /*
+         * Reserve this user's redemption.
+         *
+         * The database condition checks:
+         * - code is still active
+         * - user has not redeemed it
+         * - limit has not been reached
+         *
+         * This helps prevent two simultaneous
+         * users from taking the same final slot.
+         */
+
+        const updatedCode =
+            await RedeemCode.findOneAndUpdate(
+
+                {
+                    _id: redeemCode._id,
+
+                    active: true,
+
+                    redeemedUsers: {
+                        $ne: userId
+                    },
+
+                    $expr: {
+                        $lt: [
+                            {
+                                $size:
+                                    '$redeemedUsers'
+                            },
+                            '$redeemLimit'
+                        ]
+                    }
+                },
+
+                {
+                    $addToSet: {
+                        redeemedUsers:
+                            userId
+                    }
+                },
+
+                {
+                    new: true
+                }
+            );
+
+        // Slot was taken by someone else
+        if (!updatedCode) {
+
+            const latestCode =
+                await RedeemCode.findById(
+                    redeemCode._id
+                );
+
+            if (
+                latestCode &&
+                latestCode.redeemedUsers.includes(
+                    userId
+                )
+            ) {
+                return ctx.reply(
+                    '⚠️ You have already redeemed this code!'
+                );
+            }
+
+            if (
+                latestCode &&
+                latestCode.redeemedUsers.length >=
+                latestCode.redeemLimit
+            ) {
+
+                await RedeemCode.updateOne(
+                    {
+                        _id:
+                            latestCode._id
+                    },
+                    {
+                        $set: {
+                            active: false
+                        }
+                    }
+                );
+
+                return ctx.reply(
+                    '❌ Code limit reached!\n\n' +
+                    'Stay active to grab new codes.'
+                );
+            }
+
+            return ctx.reply(
+                '❌ This code could not be redeemed. Please try again.'
+            );
+        }
+
+        // Find user
+        const user =
+            await User.findOne({
+                userId
+            });
+
+        if (!user) {
+
+            // Roll back the reserved redemption
+            await RedeemCode.updateOne(
+                {
+                    _id:
+                        updatedCode._id
+                },
+                {
+                    $pull: {
+                        redeemedUsers:
+                            userId
+                    }
+                }
+            );
+
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        // Give reward
+        user.rupees +=
+            redeemCode.reward;
+
+        await user.save();
+
+        // Mark code inactive when final slot is used
+        if (
+            updatedCode.redeemedUsers.length >=
+            updatedCode.redeemLimit
+        ) {
+
+            await RedeemCode.updateOne(
+                {
+                    _id:
+                        updatedCode._id
+                },
+                {
+                    $set: {
+                        active: false
+                    }
+                }
+            );
+        }
+
+        const used =
+            updatedCode.redeemedUsers.length;
+
+        const remaining =
+            Math.max(
+                0,
+                updatedCode.redeemLimit - used
+            );
+
+        return ctx.reply(
+            `🎉 <b>REDEEM SUCCESSFUL!</b>\n\n` +
+            `💰 You received <b>${redeemCode.reward.toLocaleString()} Rs</b>.\n\n` +
+            `🎟 Code uses: <b>${used}/${redeemCode.redeemLimit}</b>\n` +
+            `👥 Remaining: <b>${remaining}</b>`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /redeem error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while redeeming this code.'
+        );
+    }
+});
+
 // ==================== ADD ALIEN ====================
 
 bot.command('addalien', async (ctx) => {
