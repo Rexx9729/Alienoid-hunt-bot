@@ -7,7 +7,7 @@ const {
 
 const {
     HUNT_WIN_REWARDS
-} = require('../config/rewards');
+} = require('../config/reward');
 // ==================== HUNT CONFIG ====================
 
 const HUNT_COST = 20;
