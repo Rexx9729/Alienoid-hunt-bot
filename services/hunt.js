@@ -7,7 +7,6 @@ const {
     attemptCapture
 } = require('./huntEngine');
 const {
-    HUNT_WIN_REWARDS,
     HUNT_LOSE_REWARD
 } = require('../Config/Reward');
 const {
@@ -507,8 +506,13 @@ async function finishWildDefeated(ctx) {
         }
 
         // Calculate reward using existing Hunt Engine
-        const reward =
-    HUNT_WIN_REWARDS[alien.rarity];
+        const reward = Number(alien.huntRewardMin);
+
+if (!Number.isFinite(reward)) {
+    throw new Error(
+        `Invalid hunt reward in database for ${alien.name}: ${alien.huntRewardMin}`
+    );
+}
 
         // Get user
         const user =
