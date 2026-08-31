@@ -5,7 +5,9 @@ const {
     getCaptureBonus
 } = require('./battleEngine');
 
-
+const {
+    HUNT_WIN_REWARDS
+} = require('../config/rewards');
 // ==================== HUNT CONFIG ====================
 
 const HUNT_COST = 20;
@@ -189,15 +191,16 @@ async function spawnWildAlien(huntProgress) {
 
 function getHuntReward(alien) {
 
-    const min =
-        alien.huntRewardMin;
+    const reward =
+        HUNT_WIN_REWARDS[alien.rarity];
 
-    const max =
-        alien.huntRewardMax;
+    if (reward === undefined) {
+        throw new Error(
+            `No hunt reward configured for rarity: ${alien.rarity}`
+        );
+    }
 
-    return Math.floor(
-        Math.random() * (max - min + 1)
-    ) + min;
+    return reward;
 }
 
 
