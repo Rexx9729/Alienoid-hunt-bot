@@ -1248,19 +1248,19 @@ if (!dodged) {
         );
 }
 hunt.playerAttackCount += 1;
-        await ctx.answerCbQuery(
+        // Wild defeated
+if (wild.currentHp <= 0) {
+
+    await finishWildDefeated(ctx);
+
+    return;
+}
+
+await ctx.answerCbQuery(
     dodged
         ? `💨 ${wild.name} dodged the attack!`
         : `⚔️ ${attack.name}: ${result.damage} DMG`
 );
-
-        // Wild defeated
-        if (wild.currentHp <= 0) {
-
-            await finishWildDefeated(ctx);
-
-            return;
-        }
 
         // Player used turn
         hunt.turn = 'wild';
