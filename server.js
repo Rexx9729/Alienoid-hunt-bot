@@ -1711,7 +1711,35 @@ function buildBagMessage(user, page = 0) {
 
 
 
+// ==================== /BAL ====================
 
+bot.command('bal', async (ctx) => {
+    try {
+        const user = await User.findOne({
+            userId: ctx.from.id
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        return ctx.reply(
+            `💰 Balance: <b>${user.rupees.toLocaleString()} Rs</b>`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+        console.error('❌ /bal error:', error);
+
+        return ctx.reply(
+            '❌ Failed to check your balance.'
+        );
+    }
+});
 // ==================== /alist ====================
 
 bot.command(['alist', 'aliens'], async (ctx) => {
