@@ -8,6 +8,7 @@ const {
     getHuntReward
 } = require('./huntEngine');
 const {
+    HUNT_WIN_REWARDS,
     HUNT_LOSE_REWARD
 } = require('../Config/Reward');
 const {
@@ -508,7 +509,7 @@ async function finishWildDefeated(ctx) {
 
         // Calculate reward using existing Hunt Engine
         const reward =
-            getHuntReward(alien);
+    HUNT_WIN_REWARDS[alien.rarity];
 
         // Get user
         const user =
