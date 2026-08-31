@@ -59,6 +59,10 @@ mongoose.connect(MONGO_URI)
 const userSchema = new mongoose.Schema({
     userId: { type: Number, required: true, unique: true },
     username: { type: String, default: 'Hunter' },
+        admins: {
+        type: [Number],
+        default: []
+    },
     level: { type: Number, default: 1 },
     rupees: { type: Number, default: 1000 },
     hunts: { type: Number, default: 0 },
@@ -103,7 +107,28 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// ==================== ADMIN SYSTEM ====================
 
+async function isAdmin(userId) {
+
+    if (Number(userId) === OWNER_ID) {
+        return true;
+    }
+
+    const owner =
+        await User.findOne({
+            userId: OWNER_ID
+        });
+
+    if (!owner) {
+        return false;
+    }
+
+    return (
+        Array.isArray(owner.admins) &&
+        owner.admins.includes(Number(userId))
+    );
+}
 // Bot Config
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(
@@ -411,16 +436,180 @@ bot.use(async (ctx, next) => {
 
     return next();
 });
+
+// ==================== /ADDADMIN ====================
+
+bot.command('addadmin', async (ctx) => {
+
+    try {
+
+        // Only owner can add admins
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ ACCESS DENIED\n\n' +
+                'Only the Alienoid owner can manage admins.'
+            );
+        }
+
+        const replied =
+            ctx.message.reply_to_message?.from;
+
+        if (!replied) {
+            return ctx.reply(
+                '⚠️ Reply to a user\'s message with:\n\n' +
+                '/addadmin'
+            );
+        }
+
+        const targetId =
+            Number(replied.id);
+
+        if (targetId === OWNER_ID) {
+            return ctx.reply(
+                'ℹ️ The owner already has admin access.'
+            );
+        }
+
+        const owner =
+            await User.findOne({
+                userId: OWNER_ID
+            });
+
+        if (!owner) {
+            return ctx.reply(
+                '❌ Owner profile was not found in database.'
+            );
+        }
+
+        if (!Array.isArray(owner.admins)) {
+            owner.admins = [];
+        }
+
+        if (owner.admins.includes(targetId)) {
+            return ctx.reply(
+                'ℹ️ This user is already an Alienoid admin.'
+            );
+        }
+
+        owner.admins.push(targetId);
+
+        await owner.save();
+
+        const name =
+            replied.username
+                ? `@${replied.username}`
+                : replied.first_name || 'User';
+
+        return ctx.reply(
+            `✅ ADMIN ADDED\n\n` +
+            `👤 ${name}\n` +
+            `🆔 ${targetId}\n\n` +
+            `This user can now use /addalien and /deletealien.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /addadmin error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Failed to add admin.'
+        );
+    }
+});
+
+
+// ==================== /REMOVEADMIN ====================
+
+bot.command('removeadmin', async (ctx) => {
+
+    try {
+
+        // Only owner can remove admins
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ ACCESS DENIED\n\n' +
+                'Only the Alienoid owner can manage admins.'
+            );
+        }
+
+        const replied =
+            ctx.message.reply_to_message?.from;
+
+        if (!replied) {
+            return ctx.reply(
+                '⚠️ Reply to an admin\'s message with:\n\n' +
+                '/removeadmin'
+            );
+        }
+
+        const targetId =
+            Number(replied.id);
+
+        const owner =
+            await User.findOne({
+                userId: OWNER_ID
+            });
+
+        if (!owner) {
+            return ctx.reply(
+                '❌ Owner profile was not found in database.'
+            );
+        }
+
+        if (!Array.isArray(owner.admins)) {
+            owner.admins = [];
+        }
+
+        const index =
+            owner.admins.indexOf(targetId);
+
+        if (index === -1) {
+            return ctx.reply(
+                'ℹ️ This user is not an Alienoid admin.'
+            );
+        }
+
+        owner.admins.splice(index, 1);
+
+        await owner.save();
+
+        const name =
+            replied.username
+                ? `@${replied.username}`
+                : replied.first_name || 'User';
+
+        return ctx.reply(
+            `✅ ADMIN REMOVED\n\n` +
+            `👤 ${name}\n` +
+            `🆔 ${targetId}\n\n` +
+            `This user no longer has uploader access.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /removeadmin error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Failed to remove admin.'
+        );
+    }
+});
 // ==================== ADD ALIEN ====================
 
 bot.command('addalien', async (ctx) => {
 
     console.log('🔥 ADDALIEN COMMAND RECEIVED');
     if (ctx.from.id !== OWNER_ID) {
-        return ctx.reply(
-            '❌ ACCESS DENIED\n\n' +
-            'Only the Alienoid owner can add new aliens.'
-        );
+    return ctx.reply(
+        '❌ ACCESS DENIED\n\n' +
+        'Only the Alienoid owner can add new aliens.'
+    );
     }
     ctx.session ??= {};
 
@@ -734,6 +923,82 @@ await ctx.telegram.sendPhoto(
         await ctx.reply(
             `❌ Failed to add alien.\n\n` +
             `Error: ${error.message}`
+        );
+    }
+});
+// ==================== /DELETEALIEN ====================
+
+bot.command('deletealien', async (ctx) => {
+
+    try {
+
+        // Owner + Admins allowed
+        if (!(await isAdmin(ctx.from.id))) {
+            return ctx.reply(
+                '❌ ACCESS DENIED\n\n' +
+                'Only Alienoid admins can delete aliens.'
+            );
+        }
+
+        const input =
+            ctx.message.text
+                .trim()
+                .replace(
+                    /^\/deletealien(?:@\w+)?\s*/i,
+                    ''
+                )
+                .trim();
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Example:\n' +
+                '/deletealien Goop'
+            );
+        }
+
+        const escapedName =
+            input.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+            );
+
+        const alien =
+            await Alien.findOne({
+                name: {
+                    $regex: `^${escapedName}$`,
+                    $options: 'i'
+                }
+            });
+
+        if (!alien) {
+            return ctx.reply(
+                `❌ Alien "${input}" was not found in the Alienoid database.`
+            );
+        }
+
+        const deletedName =
+            alien.name;
+
+        await Alien.deleteOne({
+            _id: alien._id
+        });
+
+        return ctx.reply(
+            `✅ ALIEN DELETED\n\n` +
+            `👽 ${deletedName}\n\n` +
+            `This alien has been removed from the Alienoid game database.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /deletealien error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Failed to delete alien.'
         );
     }
 });
