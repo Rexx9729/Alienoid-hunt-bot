@@ -7,7 +7,9 @@ const {
     attemptCapture,
     getHuntReward
 } = require('./huntEngine');
-
+const {
+    HUNT_LOSE_REWARD
+} = require('../config/rewards');
 const {
     calculateDamage,
     getDodgeChance,
@@ -1384,20 +1386,29 @@ if (!dodged) {
 hunt.wildAttackCount += 1;
         // Player defeated
         if (player.currentHp <= 0) {
+            const user =
+    await User.findOne({
+        userId: ctx.from.id
+    });
+
+if (user) {
+    user.rupees += HUNT_LOSE_REWARD;
+    await user.save();
+}
 
             clearHuntSession(ctx);
 
 try {
 
     await editHuntMessage(
-        ctx,
-        hunt,
-        `👎🏻 <b>LOSE!! BETTER LUCK NEXT TIME</b>\n\n` +
+    ctx,
+    hunt,
+    `👎🏻 <b>LOSE!! BETTER LUCK NEXT TIME</b>\n\n` +
 
-        `🎊 <b>WINNER:</b> "${wild.name}"\n` +
+    `🎊 <b>WINNER:</b> "${wild.name}"\n` +
 
-        `🎉 <b>REWARD:</b> —`
-    );
+    `🎉 <b>REWARD:</b> +₹${HUNT_LOSE_REWARD}`
+);
 
 } catch (error) {
 
