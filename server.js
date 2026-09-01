@@ -419,15 +419,15 @@ const STAR_POWER_MULTIPLIER = {
 };
 
 // ==================== SAFE TELEGRAM TEXT ====================
-
 function sanitizeTelegramText(value = '') {
-
-    return String(value)
-        .replace(
-            /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
-            '�'
-        );
+    return Array.from(String(value))
+        .filter(char => {
+            const code = char.codePointAt(0);
+            return !(code >= 0xD800 && code <= 0xDFFF);
+        })
+        .join('');
 }
+
 // ==================== TELEGRAM COMMAND MENU ====================
 
 // Private DM command menu
@@ -1565,8 +1565,7 @@ bot.command(['profile', 'me'], async (ctx) => {
     if (!user) return ctx.reply('⚠️ Please send /start first!');
 
     const name = sanitizeTelegramText(
-    user.username || 'Hunter'
-)
+    user.username || 'Hunter')
     .padEnd(10, ' ')
     .substring(0, 10);
     const lvl = String(user.level).padEnd(8, ' ');
@@ -1585,7 +1584,7 @@ bot.command(['profile', 'me'], async (ctx) => {
  ──────────────────
 </code>`;
 
-    ctx.replyWithHTML(profileMsg);
+    ctx.replyWithHTML(sanitizeTelegramText(profileMsg));
 });
 
 bot.command(['inventory', 'items'], async (ctx) => {
