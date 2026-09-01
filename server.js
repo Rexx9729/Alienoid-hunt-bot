@@ -3744,7 +3744,7 @@ const SHOP_ITEMS = {
         price: 15000,
         inventoryKey: 'absoluteScan'
     }
-});
+};
 
 function getShopMessage(user) {
 
