@@ -20,6 +20,7 @@ const {
 } = require('./services/battleEngine');
 const { registerHunt } = require('./services/hunt');
 const { registerFight } = require('./services/fight');
+const exploreCooldowns = new Map();
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -3629,6 +3630,78 @@ bot.command('daily', async (ctx) => {
     }
 });
 
+// ==================== /EXPLORE ====================
+
+const EXPLORE_COOLDOWN = 60 * 1000;
+
+const EXPLORE_PLANETS = [
+    "Mars",
+    "Venus",
+    "Jupiter",
+    "Saturn",
+    "Neptune",
+    "Uranus",
+    "Mercury",
+    "Pluto",
+    "Titan",
+    "Europa",
+    "Io",
+    "Ganymede",
+    "Callisto",
+    "Proxima b",
+    "Kepler-22b",
+    "TRAPPIST-1e",
+    "Gliese 581c",
+    "Pandora",
+    "Arrakis",
+    "Krypton"
+];
+
+bot.command("explore", async (ctx) => {
+    try {
+        const userId = ctx.from.id.toString();
+        const now = Date.now();
+
+        const lastExplore = exploreCooldowns.get(userId) || 0;
+        const remaining = EXPLORE_COOLDOWN - (now - lastExplore);
+
+        if (remaining > 0) {
+            const seconds = Math.ceil(remaining / 1000);
+
+            return ctx.reply(
+                `⏳ You can explore again after ${seconds} seconds.`
+            );
+        }
+
+        const user = await User.findOne({ telegramId: userId });
+
+        if (!user) {
+            return ctx.reply("❌ Please use /start first.");
+        }
+
+        const planet =
+            EXPLORE_PLANETS[
+                Math.floor(Math.random() * EXPLORE_PLANETS.length)
+            ];
+
+        const reward =
+            Math.floor(Math.random() * 31) + 50; // ₹50–₹80
+
+        user.rupees += reward;
+        await user.save();
+
+        exploreCooldowns.set(userId, now);
+
+        return ctx.reply(
+            `🎉 Wow! You explored ${planet} and got ₹${reward} Rupees!\n\n` +
+            `Try again after 60 seconds.`
+        );
+
+    } catch (error) {
+        console.error("❌ /explore error:", error);
+        return ctx.reply("❌ Something went wrong. Please try again.");
+    }
+});
 // ==================== RUPPES PAYMENT ====================
 
 bot.command('rpay', async (ctx) => {
