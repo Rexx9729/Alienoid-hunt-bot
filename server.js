@@ -436,9 +436,11 @@ bot.telegram.setMyCommands([
     { command: 'start', description: 'Start Alienoid Hunt' },
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
+    { command: 'shop', description: 'Buy items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'stats', description: 'View your alien stats' },
+    { command: 'explore', description: 'earn rupees buy explore' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
@@ -459,9 +461,11 @@ bot.telegram.setMyCommands([
     { command: 'start', description: 'Start Alienoid Hunt' },
     { command: 'profile', description: 'View your Hunter profile' },
     { command: 'inventory', description: 'View your items and scans' },
+    { command: 'shop', description: 'Buy items and scans' },
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'stats', description: 'View your alien stats' },
+    { command: 'explore', description: 'earn rupees buy explore' },
     { command: 'fight', description: 'fight with other users' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
@@ -3700,6 +3704,263 @@ bot.command("explore", async (ctx) => {
     } catch (error) {
         console.error("❌ /explore error:", error);
         return ctx.reply("❌ Something went wrong. Please try again.");
+    }
+});
+// ==================== SHOP ====================
+
+const SHOP_ITEMS = {
+    healerx: {
+        name: 'Healerx',
+        price: 800,
+        inventoryKey: 'healerx'
+    },
+
+    buff: {
+        name: 'Buff',
+        price: 1000,
+        inventoryKey: 'buff'
+    },
+
+    deff: {
+        name: 'Deff',
+        price: 1000,
+        inventoryKey: 'defense'
+    },
+
+    super: {
+        name: 'S.Scan',
+        price: 2500,
+        inventoryKey: 'superScan'
+    },
+
+    mega: {
+        name: 'M.Scan',
+        price: 5500,
+        inventoryKey: 'megaScan'
+    },
+
+    absolute: {
+        name: 'A.Scan',
+        price: 15000,
+        inventoryKey: 'absoluteScan'
+    }
+});
+
+function getShopMessage(user) {
+
+    return (
+`╔══════════════════════╗
+       🛒 ALIENOID SHOP
+╚══════════════════════╝
+
+💰 Your Balance: ₹${user.rupees.toLocaleString()}
+
+🧪 HEALERX : ₹800
+💊 BUFF : ₹1,000
+🛡️ DEFF : ₹1,000
+⚡ SUPER SCAN : ₹2,500
+☣️ MEGA SCAN : ₹5,500
+☢️ ABSOLUTE SCAN : ₹15,000
+
+Tap to purchase:-`
+    );
+}
+
+function getShopKeyboard() {
+
+    return {
+        inline_keyboard: [
+            [
+                {
+                    text: 'Healerx',
+                    callback_data: 'shop_buy_healerx'
+                },
+                {
+                    text: 'Buff',
+                    callback_data: 'shop_buy_buff'
+                }
+            ],
+            [
+                {
+                    text: 'Deff',
+                    callback_data: 'shop_buy_deff'
+                },
+                {
+                    text: 'S.Scan',
+                    callback_data: 'shop_buy_super'
+                }
+            ],
+            [
+                {
+                    text: 'M.Scan',
+                    callback_data: 'shop_buy_mega'
+                },
+                {
+                    text: 'A.Scan',
+                    callback_data: 'shop_buy_absolute'
+                }
+            ],
+            [
+                {
+                    text: 'Close',
+                    callback_data: 'shop_close'
+                }
+            ]
+        ]
+    };
+}
+
+
+// ==================== /SHOP ====================
+
+bot.command('shop', async (ctx) => {
+
+    try {
+
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        return ctx.reply(
+            getShopMessage(user),
+            {
+                reply_markup:
+                    getShopKeyboard()
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /shop error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not open the shop.'
+        );
+    }
+});
+
+
+// ==================== SHOP PURCHASE ====================
+
+bot.action(
+    /^shop_buy_(healerx|buff|deff|super|mega|absolute)$/,
+    async (ctx) => {
+
+        try {
+
+            const itemKey =
+                ctx.match[1];
+
+            const item =
+                SHOP_ITEMS[itemKey];
+
+            if (!item) {
+                return ctx.answerCbQuery(
+                    '❌ Invalid shop item.',
+                    { show_alert: true }
+                );
+            }
+
+            const user =
+                await User.findOne({
+                    userId: ctx.from.id
+                });
+
+            if (!user) {
+                return ctx.answerCbQuery(
+                    '⚠️ Please send /start first.',
+                    { show_alert: true }
+                );
+            }
+
+            if (user.rupees < item.price) {
+                return ctx.answerCbQuery(
+                    `❌ Not enough Rupees!\n\nNeed ₹${item.price.toLocaleString()}.`,
+                    { show_alert: true }
+                );
+            }
+
+            // Deduct Rupees
+            user.rupees -= item.price;
+
+            // Add item to existing inventory
+            user.inventory[item.inventoryKey] =
+                Number(
+                    user.inventory[item.inventoryKey] || 0
+                ) + 1;
+
+            await user.save();
+
+            // Purchase popup
+            await ctx.answerCbQuery(
+                `✅ PURCHASED SUCCESSFULLY\n\n` +
+                `${item.name}\n` +
+                `💸 Cost deducted: ₹${item.price.toLocaleString()}`,
+                {
+                    show_alert: true
+                }
+            );
+
+            // Refresh shop balance
+            return ctx.editMessageText(
+                getShopMessage(user),
+                {
+                    reply_markup:
+                        getShopKeyboard()
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Shop purchase error:',
+                error
+            );
+
+            return ctx.answerCbQuery(
+                '❌ Purchase failed. Please try again.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+    }
+);
+
+
+// ==================== SHOP CLOSE ====================
+
+bot.action('shop_close', async (ctx) => {
+
+    try {
+
+        await ctx.answerCbQuery();
+
+        return ctx.deleteMessage();
+
+    } catch (error) {
+
+        console.error(
+            '❌ Shop close error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not close shop.',
+            {
+                show_alert: true
+            }
+        );
     }
 });
 // ==================== RUPPES PAYMENT ====================
