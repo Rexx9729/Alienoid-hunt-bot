@@ -19,6 +19,7 @@ const {
     createHpBar
 } = require('./services/battleEngine');
 const { registerHunt } = require('./services/hunt');
+const { registerFight } = require('./services/fight');
 // Express Keep-Alive Server
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -284,6 +285,7 @@ bot.use(async (ctx, next) => {
 // ==================== END GLOBAL CALLBACK GUARD ====================
 
 registerHunt(bot, User);
+registerFight(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
 
 const ADD_ALIEN_TIMEOUT = 2 * 60 * 1000; // 2 minutes
@@ -372,39 +374,39 @@ const ALIEN_ECONOMY = {
 
 const STAR_MERGE_FEES = {
     Basic: {
-        1: 200,
-        2: 400,
-        3: 600
+        1: 4000,
+        2: 6000,
+        3: 8000
     },
 
     Common: {
-        1: 400,
-        2: 600,
-        3: 800
+        1: 6000,
+        2: 8000,
+        3: 10000
     },
 
     Rare: {
-        1: 600,
-        2: 800,
-        3: 1000
+        1: 8000,
+        2: 10000,
+        3: 12000
     },
 
     Legendary: {
-        1: 1000,
-        2: 1200,
-        3: 1400
+        1: 10000,
+        2: 12000,
+        3: 15000
     },
 
     Cosmic: {
-        1: 2000,
-        2: 2500,
-        3: 3000
+        1: 15000,
+        2: 20000,
+        3: 28000
     },
 
     God: {
-        1: 10000,
-        2: 15000,
-        3: 20000
+        1: 30000,
+        2: 50000,
+        3: 80000
     }
 };
 
@@ -449,6 +451,7 @@ bot.telegram.setMyCommands([
     { command: 'alist', description: 'View your collected aliens' },
     { command: 'merge', description: 'Merge 3 identical aliens' },
     { command: 'stats', description: 'View your alien stats' },
+    { command: 'fight', description: 'fight with other users' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
     { command: 'redeem', description: 'Redeem an Alienoid reward code. you can get codes from Alienoid support group' },
@@ -4903,6 +4906,9 @@ View your level, Rupees, Hunts, Duels and wins.
 /inventory
 View your items, scans and Rupees.
 
+/fight reply on another user to fight with him/her
+use /fight <amount> to gamble fight min 50rs max 10000rs.
+
 /alist
 View your collected aliens.
 
@@ -5019,34 +5025,34 @@ The Star System works across all rarities.
 💰 MERGE FEES
 
 Basic
-₹200 → 1★
-₹400 → 2★
-₹600 → 3★
+₹4000 → 1★
+₹6000 → 2★
+₹8000 → 3★
 
 Common
-₹400 → 1★
-₹600 → 2★
-₹800 → 3★
+₹6000 → 1★
+₹8000 → 2★
+₹10,000 → 3★
 
 Rare
-₹600 → 1★
-₹800 → 2★
-₹1,000 → 3★
+₹8000 → 1★
+₹10,000 → 2★
+₹12,000 → 3★
 
 Legendary
-₹1,000 → 1★
-₹1,200 → 2★
-₹1,400 → 3★
+₹10,000 → 1★
+₹12,000 → 2★
+₹15,000 → 3★
 
 Cosmic
-₹2,000 → 1★
-₹2,500 → 2★
-₹3,000 → 3★
+₹15,000 → 1★
+₹20,000 → 2★
+₹28,000 → 3★
 
 God
-10000-> 1⭐
-15000-> 2⭐
-20000-> 3⭐
+30,000-> 1⭐
+50,000-> 2⭐
+80,000-> 3⭐
 `;
 
     await ctx.answerCbQuery();
