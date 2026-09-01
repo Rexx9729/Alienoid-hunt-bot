@@ -242,7 +242,55 @@ function createHpBar(currentHp, maxHp, length = 12) {
     );
 }
 
+// ==================== SUPPORT ARTIFACT MODIFIERS ====================
 
+function applyAttackMultiplier(
+    damage,
+    attacker
+) {
+
+    const multiplier =
+        Number(
+            attacker?.artifactAttackMultiplier || 1
+        );
+
+    return Math.max(
+        1,
+        Math.round(
+            Number(damage || 0) *
+            multiplier
+        )
+    );
+}
+
+
+function applyDefenseReduction(
+    damage,
+    defender
+) {
+
+    const reduction =
+        Number(
+            defender?.artifactDamageReduction || 0
+        );
+
+    if (reduction <= 0) {
+        return Math.max(
+            1,
+            Math.round(
+                Number(damage || 0)
+            )
+        );
+    }
+
+    return Math.max(
+        1,
+        Math.round(
+            Number(damage || 0) *
+            (1 - reduction)
+        )
+    );
+}
 module.exports = {
     STAR_MULTIPLIERS,
     getStarMultiplier,
