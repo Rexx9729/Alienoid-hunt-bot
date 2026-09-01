@@ -39,11 +39,11 @@ const busyUsers = new Map();
 function getUserName(user, telegramUser = null) {
 
     if (user?.username) {
-        return `@${user.username}`;
+        return `[${user.username}]`;
     }
 
     if (telegramUser?.username) {
-        return `@${telegramUser.username}`;
+        return `[${telegramUser.username}]`;
     }
 
     if (user?.first_name) {
