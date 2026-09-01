@@ -254,5 +254,7 @@ module.exports = {
     getDodgeChance,
     rollDodge,
     getCaptureBonus,
-    createHpBar
+    createHpBar,
+    applyAttackMultiplier,
+    applyDefenseReduction
 };
