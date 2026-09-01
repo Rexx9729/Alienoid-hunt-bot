@@ -16,10 +16,18 @@ rollDodge,
     getIncomingDamageMultiplier,
     calculateHealerxRecovery,
     getFirstTurn,
-    createHpBar
+    createHpBar,
+    applyAttackMultiplier,
+    applyDefenseReduction
 } = require('./battleEngine');
 
-
+const {
+    createSupportState,
+    buildSupportMessage,
+    getSupportKeyboard,
+    consumeArtifact,
+    applyArtifactStats
+} = require('./supportArtifacts');
 // ==================== HUNT CONFIG ====================
 
 const MAX_DECK_SIZE = 4;
@@ -1143,11 +1151,44 @@ if (hunt.stage !== 'spawned') {
             getPlayerBattleAlien(storedAlien);
 
         hunt.playerAlien =
-            playerAlien;
+    playerAlien;
 
-        hunt.stage = 'battle';
+// ==================== SUPPORT ARTIFACTS ====================
 
-        hunt.paused = false;
+hunt.support =
+    createSupportState();
+
+hunt.stage =
+    'support';
+
+hunt.paused =
+    false;
+
+const supportUser =
+    await User.findOne({
+        userId: ctx.from.id
+    });
+
+if (!supportUser) {
+    return ctx.answerCbQuery(
+        '⚠️ User not found.',
+        { show_alert: true }
+    );
+}
+
+await ctx.answerCbQuery();
+
+return editHuntMessage(
+    ctx,
+    hunt,
+    buildSupportMessage(
+        supportUser,
+        hunt.support
+    ),
+    getSupportKeyboard(
+        hunt.support
+    )
+);
 
         const firstTurn =
             getFirstTurn(
@@ -1173,7 +1214,297 @@ if (hunt.stage !== 'spawned') {
         }
     });
 
+// ==================== SUPPORT ARTIFACTS ====================
 
+async function startHuntBattleAfterSupport(
+    ctx
+) {
+
+    const hunt =
+        ctx.session?.hunt;
+
+    if (!hunt) {
+        return ctx.answerCbQuery(
+            '⚠️ Hunt session expired.'
+        );
+    }
+
+    const player =
+        hunt.playerAlien;
+
+    if (!player) {
+        return ctx.answerCbQuery(
+            '❌ Your alien is missing.',
+            { show_alert: true }
+        );
+    }
+
+    // Apply temporary stats.
+    applyArtifactStats(
+        player,
+        hunt.support
+    );
+
+    const firstTurn =
+        getFirstTurn(
+            player,
+            hunt.wildAlien
+        );
+
+    hunt.turn =
+        firstTurn;
+
+    hunt.stage =
+        'battle';
+
+    hunt.paused =
+        false;
+
+    await ctx.answerCbQuery();
+
+    await editHuntMessage(
+        ctx,
+        hunt,
+        buildBattleMessage(hunt),
+        getBattleKeyboard(hunt)
+    );
+
+    if (
+        hunt.turn === 'wild'
+    ) {
+        await executeWildTurn(ctx);
+    }
+}
+
+
+// ==================== DEFF ====================
+
+bot.action(
+    'support_deff',
+    async (ctx) => {
+
+        const hunt =
+            ctx.session?.hunt;
+
+        if (
+            !hunt ||
+            hunt.stage !== 'support'
+        ) {
+            return ctx.answerCbQuery(
+                '⚠️ Support menu is no longer active.'
+            );
+        }
+
+        try {
+
+            const user =
+                await User.findOne({
+                    userId:
+                        ctx.from.id
+                });
+
+            if (!user) {
+                return ctx.answerCbQuery(
+                    '⚠️ User not found.',
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            const result =
+                await consumeArtifact(
+                    user,
+                    hunt.support,
+                    'deff'
+                );
+
+            if (!result.ok) {
+                return ctx.answerCbQuery(
+                    `❌ ${result.reason}`,
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            applyArtifactStats(
+                hunt.playerAlien,
+                hunt.support
+            );
+
+            await ctx.answerCbQuery(
+                '🛡️ Deff used!'
+            );
+
+            return editHuntMessage(
+                ctx,
+                hunt,
+                buildSupportMessage(
+                    user,
+                    hunt.support
+                ),
+                getSupportKeyboard(
+                    hunt.support
+                )
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Hunt Deff error:',
+                error
+            );
+
+            return ctx.answerCbQuery(
+                '❌ Could not use Deff.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+    }
+);
+
+
+// ==================== BUFF ====================
+
+bot.action(
+    'support_buff',
+    async (ctx) => {
+
+        const hunt =
+            ctx.session?.hunt;
+
+        if (
+            !hunt ||
+            hunt.stage !== 'support'
+        ) {
+            return ctx.answerCbQuery(
+                '⚠️ Support menu is no longer active.'
+            );
+        }
+
+        try {
+
+            const user =
+                await User.findOne({
+                    userId:
+                        ctx.from.id
+                });
+
+            if (!user) {
+                return ctx.answerCbQuery(
+                    '⚠️ User not found.',
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            const result =
+                await consumeArtifact(
+                    user,
+                    hunt.support,
+                    'buff'
+                );
+
+            if (!result.ok) {
+                return ctx.answerCbQuery(
+                    `❌ ${result.reason}`,
+                    {
+                        show_alert: true
+                    }
+                );
+            }
+
+            applyArtifactStats(
+                hunt.playerAlien,
+                hunt.support
+            );
+
+            await ctx.answerCbQuery(
+                '⚔️ Buff used!'
+            );
+
+            return editHuntMessage(
+                ctx,
+                hunt,
+                buildSupportMessage(
+                    user,
+                    hunt.support
+                ),
+                getSupportKeyboard(
+                    hunt.support
+                )
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Hunt Buff error:',
+                error
+            );
+
+            return ctx.answerCbQuery(
+                '❌ Could not use Buff.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+    }
+);
+
+
+// ==================== IGNORE ====================
+
+bot.action(
+    'support_ignore',
+    async (ctx) => {
+
+        const hunt =
+            ctx.session?.hunt;
+
+        if (
+            !hunt ||
+            hunt.stage !== 'support'
+        ) {
+            return ctx.answerCbQuery(
+                '⚠️ Support menu is no longer active.'
+            );
+        }
+
+        return startHuntBattleAfterSupport(
+            ctx
+        );
+    }
+);
+
+
+// ==================== CONTINUE AFTER ARTIFACT ====================
+
+bot.action(
+    /^support_continue$/,
+    async (ctx) => {
+
+        const hunt =
+            ctx.session?.hunt;
+
+        if (
+            !hunt ||
+            hunt.stage !== 'support'
+        ) {
+            return ctx.answerCbQuery(
+                '⚠️ Support menu is no longer active.'
+            );
+        }
+
+        return startHuntBattleAfterSupport(
+            ctx
+        );
+    }
+);
     // ==================== PLAYER ATTACK ====================
 
     bot.action(/^hunt_attack_(\d+)$/, async (ctx) => {
@@ -1231,6 +1562,12 @@ if (hunt.stage !== 'spawned') {
         player,
         wild,
         attack
+    );
+
+        result.damage =
+    applyAttackMultiplier(
+        result.damage,
+        player
     );
 
 let dodged = false;
@@ -1371,6 +1708,11 @@ await ctx.answerCbQuery(
                     incomingMultiplier
                 )
             );
+        result.damage =
+    applyDefenseReduction(
+        result.damage,
+        player
+    );
 
         let dodged = false;
 
