@@ -3659,7 +3659,7 @@ const EXPLORE_PLANETS = [
 
 bot.command("explore", async (ctx) => {
     try {
-        const userId = ctx.from.id.toString();
+        const userId = ctx.from.id;
         const now = Date.now();
 
         const lastExplore = exploreCooldowns.get(userId) || 0;
@@ -3673,7 +3673,7 @@ bot.command("explore", async (ctx) => {
             );
         }
 
-        const user = await User.findOne({ telegramId: userId });
+        const user = await User.findOne({ userId });
 
         if (!user) {
             return ctx.reply("❌ Please use /start first.");
