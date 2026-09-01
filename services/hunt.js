@@ -915,7 +915,7 @@ bot.action('hunt_scan_back', async (ctx) => {
     // resume the paused battle.
     if (hunt.stage === 'battle') {
 
-        hunt.paused = false;
+        hunt.paused = true;
 
         await editHuntMessage(
     ctx,
