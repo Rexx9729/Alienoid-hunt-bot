@@ -418,6 +418,16 @@ const STAR_POWER_MULTIPLIER = {
     3: 2.00
 };
 
+// ==================== SAFE TELEGRAM TEXT ====================
+
+function sanitizeTelegramText(value = '') {
+
+    return String(value)
+        .replace(
+            /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+            '�'
+        );
+}
 // ==================== TELEGRAM COMMAND MENU ====================
 
 // Private DM command menu
@@ -1554,7 +1564,11 @@ bot.command(['profile', 'me'], async (ctx) => {
 
     if (!user) return ctx.reply('⚠️ Please send /start first!');
 
-    const name = user.username.padEnd(10, ' ').substring(0, 10);
+    const name = sanitizeTelegramText(
+    user.username || 'Hunter'
+)
+    .padEnd(10, ' ')
+    .substring(0, 10);
     const lvl = String(user.level).padEnd(8, ' ');
     const duels = `${user.duels} (W:${user.wins})`.padEnd(8, ' ');
     const hunts = String(user.hunts).padEnd(8, ' ');
