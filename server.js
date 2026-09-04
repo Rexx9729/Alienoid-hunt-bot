@@ -108,6 +108,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+// ==================== GLOBAL DAILY EARNING CAP ====================
 
 // ==================== REDEEM CODE MODEL ====================
 
@@ -448,8 +449,6 @@ bot.telegram.setMyCommands([
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
     { command: 'trade', description: 'Trade aliens with another player' },
-    { command: 'give', description: 'Give an item to another player' },
-    { command: 'donate', description: 'Donate a scan to another player' },
     
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
@@ -473,8 +472,6 @@ bot.telegram.setMyCommands([
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
     { command: 'trade', description: 'Trade aliens with another player' },
-    { command: 'give', description: 'Give an item to another player' },
-    { command: 'donate', description: 'Donate a scan to another player' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
