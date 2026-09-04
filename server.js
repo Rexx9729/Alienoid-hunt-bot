@@ -5456,6 +5456,44 @@ bot.launch()
     .catch((error) => {
         console.error('❌ Telegram Bot Launch Error:', error);
     });
+// ==================== /BOTSTATS ====================
 
+bot.command('botstats', async (ctx) => {
+    try {
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply('❌ Owner only command.');
+        }
+
+        const totalUsers = await User.countDocuments();
+
+        const totalAliens = await Alien.countDocuments();
+
+        const uptimeSeconds = Math.floor(process.uptime());
+
+        const days = Math.floor(uptimeSeconds / 86400);
+        const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+
+        const message =
+`📊 <b>ALIENOID BOT STATS</b>
+
+👥 Total Users : ${totalUsers}
+📅 Total Monthly Users : Coming Soon
+🟢 Total Active Now Users : Coming Soon
+
+⏱️ Bot is live from ${days}d ${hours}h ${minutes}m
+🤖 Bot Status : Active
+
+👽 Total Database Aliens : ${totalAliens}`;
+
+        return ctx.reply(message, {
+            parse_mode: 'HTML'
+        });
+
+    } catch (error) {
+        console.error('❌ /botstats error:', error);
+        return ctx.reply('❌ Could not load bot stats.');
+    }
+});
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
