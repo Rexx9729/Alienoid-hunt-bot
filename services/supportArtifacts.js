@@ -23,7 +23,7 @@ function createSupportState() {
 function getArtifactInventoryKey(type) {
 
     if (type === 'deff') {
-        return 'deff';
+        return 'defense';
     }
 
     if (type === 'buff') {
@@ -321,7 +321,7 @@ function buildSupportMessage(
         user.inventory || {};
 
     const deffCount =
-        Number(inventory.deff || 0);
+        Number(inventory.defense || 0);
 
     const buffCount =
         Number(inventory.buff || 0);
