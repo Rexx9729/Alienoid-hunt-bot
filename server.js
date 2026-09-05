@@ -1629,10 +1629,11 @@ const xp = `${levelData.currentXP.toLocaleString()} / ${levelData.nextMilestone.
 ──────────────────
  👤 Name  : ${name} 
  📊 Level : ${lvl} 
- ✨ XP    : ${xp} 
  ⚔️ Duels : ${duels} 
  🎯 Hunts : ${hunts} 
  💰 Rupees: ₹ ${rupees} 
+ ✨ XP Required 👇🏻
+ ${xp} 
  ──────────────────
 </code>`;
 
