@@ -108,6 +108,23 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+// ==================== GROUP MODEL ====================
+
+const groupSchema = new mongoose.Schema({
+    chatId: {
+        type: Number,
+        required: true,
+        unique: true
+    },
+    title: {
+        type: String,
+        default: 'Unknown Group'
+    }
+}, {
+    timestamps: true
+});
+
+const Group = mongoose.model('Group', groupSchema);
 // ==================== XP & LEVEL SYSTEM ====================
 
 const HUNT_XP = 50;
@@ -332,7 +349,69 @@ bot.use(async (ctx, next) => {
 });
 
 // ==================== END GLOBAL CALLBACK GUARD ====================
+// ==================== AUTO SAVE GROUP ====================
 
+bot.on('my_chat_member', async (ctx) => {
+
+    try {
+
+        const chat = ctx.chat;
+        const newStatus = ctx.myChatMember?.new_chat_member?.status;
+
+        if (!chat) {
+            return;
+        }
+
+        // Only groups and supergroups
+        if (chat.type !== 'group' && chat.type !== 'supergroup') {
+            return;
+        }
+
+        // Bot added / remains in group
+        if (
+            newStatus === 'member' ||
+            newStatus === 'administrator'
+        ) {
+
+            await Group.updateOne(
+                { chatId: chat.id },
+                {
+                    $set: {
+                        chatId: chat.id,
+                        title: chat.title || 'Unknown Group'
+                    }
+                },
+                { upsert: true }
+            );
+
+            console.log(
+                `✅ Group registered: ${chat.title} (${chat.id})`
+            );
+        }
+
+        // Bot removed from group
+        if (
+            newStatus === 'left' ||
+            newStatus === 'kicked'
+        ) {
+
+            await Group.deleteOne({
+                chatId: chat.id
+            });
+
+            console.log(
+                `🗑️ Group removed: ${chat.title} (${chat.id})`
+            );
+        }
+
+    } catch (error) {
+
+        console.error(
+            '❌ Group registration error:',
+            error
+        );
+    }
+});
 registerHunt(bot, User);
 registerFight(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
@@ -5520,6 +5599,154 @@ Choose a category below to learn how the game works. 👇`;
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(message, helpKeyboard);
+});
+// ==================== /GROUPREGISTER ====================
+
+bot.command('groupregister', async (ctx) => {
+
+    try {
+
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ Owner only command.'
+            );
+        }
+
+        if (
+            ctx.chat.type !== 'group' &&
+            ctx.chat.type !== 'supergroup'
+        ) {
+            return ctx.reply(
+                '⚠️ Use /groupregister inside a group.'
+            );
+        }
+
+        await Group.updateOne(
+            { chatId: ctx.chat.id },
+            {
+                $set: {
+                    chatId: ctx.chat.id,
+                    title: ctx.chat.title || 'Unknown Group'
+                }
+            },
+            { upsert: true }
+        );
+
+        return ctx.reply(
+            `✅ GROUP REGISTERED\n\n` +
+            `👥 ${ctx.chat.title}\n\n` +
+            `This group can now receive group broadcasts.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /groupregister error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not register this group.'
+        );
+    }
+});
+// ==================== /GBROADCAST ====================
+
+bot.command('gbroadcast', async (ctx) => {
+
+    try {
+
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ Owner only command.'
+            );
+        }
+
+        const text =
+            ctx.message.text
+                .replace(/^\/gbroadcast(?:@\w+)?\s*/i, '')
+                .trim();
+
+        if (!text) {
+            return ctx.reply(
+                '⚠️ Broadcast message is empty.\n\n' +
+                'Use:\n' +
+                '/gbroadcast Your message here'
+            );
+        }
+
+        const groups = await Group.find(
+            {},
+            {
+                chatId: 1,
+                title: 1
+            }
+        );
+
+        if (groups.length === 0) {
+            return ctx.reply(
+                '⚠️ No registered groups found.'
+            );
+        }
+
+        await ctx.reply(
+            `📢 GROUP BROADCAST STARTED\n\n` +
+            `👥 Groups: ${groups.length}`
+        );
+
+        let sent = 0;
+        let failed = 0;
+
+        for (const group of groups) {
+
+            try {
+
+                await ctx.telegram.sendMessage(
+                    group.chatId,
+                    text
+                );
+
+                sent++;
+
+            } catch (error) {
+
+                failed++;
+
+                console.error(
+                    `❌ Group broadcast failed for ${group.chatId}:`,
+                    error.message
+                );
+
+                // Remove groups where bot is no longer present
+                if (
+                    error.response?.error_code === 400 ||
+                    error.response?.error_code === 403
+                ) {
+                    await Group.deleteOne({
+                        chatId: group.chatId
+                    });
+                }
+            }
+        }
+
+        return ctx.reply(
+            `✅ GROUP BROADCAST COMPLETED\n\n` +
+            `📨 Sent: ${sent}\n` +
+            `❌ Failed: ${failed}\n` +
+            `👥 Total: ${groups.length}`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /gbroadcast error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Group broadcast failed.'
+        );
+    }
 });
 console.log('🚀 Starting Telegram Bot...');
 bot.launch()
