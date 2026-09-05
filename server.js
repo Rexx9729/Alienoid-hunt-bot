@@ -108,6 +108,53 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+// ==================== XP & LEVEL SYSTEM ====================
+
+const HUNT_XP = 50;
+const DUEL_XP = 80;
+
+const FIRST_LEVEL_XP = 500;
+const SECOND_LEVEL_XP = 800;
+const XP_INCREASE_PER_LEVEL = 300;
+
+function getTotalXP(user) {
+    const hunts = Number(user.hunts || 0);
+    const duels = Number(user.duels || 0);
+
+    return (hunts * HUNT_XP) + (duels * DUEL_XP);
+}
+
+function getLevelData(user) {
+    const totalXP = getTotalXP(user);
+
+    let level = 1;
+    let previousMilestone = 0;
+
+    // Level 1 -> 2 = 500 XP
+    let requiredForNextLevel = FIRST_LEVEL_XP;
+
+    while (totalXP >= previousMilestone + requiredForNextLevel) {
+        previousMilestone += requiredForNextLevel;
+        level++;
+
+        // Level 2 -> 3 = 800 XP
+        if (level === 2) {
+            requiredForNextLevel = SECOND_LEVEL_XP;
+        } else {
+            // Every level after that: +300 XP
+            requiredForNextLevel += XP_INCREASE_PER_LEVEL;
+        }
+    }
+
+    const nextMilestone = previousMilestone + requiredForNextLevel;
+
+    return {
+        level,
+        currentXP: totalXP,
+        nextMilestone,
+        requiredXP: requiredForNextLevel
+    };
+}
 // ==================== GLOBAL DAILY EARNING CAP ====================
 
 // ==================== REDEEM CODE MODEL ====================
@@ -1565,12 +1612,14 @@ bot.command(['profile', 'me'], async (ctx) => {
     let user = await User.findOne({ userId });
 
     if (!user) return ctx.reply('⚠️ Please send /start first!');
-
+    
     const name = sanitizeTelegramText(
     user.username || 'Hunter')
     .padEnd(10, ' ')
     .substring(0, 10);
-    const lvl = String(user.level).padEnd(8, ' ');
+    const levelData = getLevelData(user);
+const lvl = String(levelData.level).padEnd(8, ' ');
+const xp = `${levelData.currentXP.toLocaleString()} / ${levelData.nextMilestone.toLocaleString()}`.padEnd(14, ' ');
     const duels = `${user.duels} (W:${user.wins})`.padEnd(8, ' ');
     const hunts = String(user.hunts).padEnd(8, ' ');
     const rupees = String(user.rupees).padEnd(8, ' ');
@@ -1580,6 +1629,7 @@ bot.command(['profile', 'me'], async (ctx) => {
 ──────────────────
  👤 Name  : ${name} 
  📊 Level : ${lvl} 
+ ✨ XP    : ${xp} 
  ⚔️ Duels : ${duels} 
  🎯 Hunts : ${hunts} 
  💰 Rupees: ₹ ${rupees} 
