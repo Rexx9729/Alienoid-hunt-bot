@@ -5568,5 +5568,88 @@ bot.command('botstats', async (ctx) => {
         return ctx.reply('❌ Could not load bot stats.');
     }
 });
+// ==================== /BROADCAST ====================
+
+bot.command('broadcast', async (ctx) => {
+
+    try {
+
+        // OWNER ONLY
+        if (ctx.from.id !== OWNER_ID) {
+            return ctx.reply(
+                '❌ ACCESS DENIED\n\n' +
+                'Only the Alienoid owner can use /broadcast.'
+            );
+        }
+
+        const text =
+            ctx.message.text
+                .replace(/^\/broadcast(?:@\w+)?\s*/i, '')
+                .trim();
+
+        if (!text) {
+            return ctx.reply(
+                '⚠️ Broadcast message is empty.\n\n' +
+                'Use:\n' +
+                '/broadcast Your message here'
+            );
+        }
+
+        const users =
+            await User.find(
+                {},
+                { userId: 1 }
+            );
+
+        let sent = 0;
+        let failed = 0;
+
+        await ctx.reply(
+            `📢 Broadcast started...\n\n` +
+            `👥 Total users: ${users.length}`
+        );
+
+        for (const user of users) {
+
+            try {
+
+                await ctx.telegram.sendMessage(
+                    user.userId,
+                    text
+                );
+
+                sent++;
+
+            } catch (error) {
+
+                failed++;
+
+                console.error(
+                    `❌ Broadcast failed for ${user.userId}:`,
+                    error.message
+                );
+            }
+        }
+
+        return ctx.reply(
+            `✅ BROADCAST COMPLETED\n\n` +
+            `📨 Sent: ${sent}\n` +
+            `❌ Failed: ${failed}\n` +
+            `👥 Total: ${users.length}`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /broadcast error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Broadcast failed.'
+        );
+    }
+});
+
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
