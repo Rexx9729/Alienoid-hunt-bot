@@ -1632,6 +1632,7 @@ const xp = `${levelData.currentXP.toLocaleString()} / ${levelData.nextMilestone.
  ⚔️ Duels : ${duels} 
  🎯 Hunts : ${hunts} 
  💰 Rupees: ₹ ${rupees} 
+ 
  ✨ XP Required 👇🏻
  ${xp} 
  ──────────────────
@@ -1750,6 +1751,7 @@ function buildBagMessage(user, page = 0) {
 
     let msg =
 `👽 <b>ALIEN COLLECTION</b> [${collection.length}]
+📖 <b>Page ${page + 1}/${totalPages}</b>
 ────────────────`;
 
     if (currentPage.length === 0) {
@@ -1834,24 +1836,29 @@ bot.command(['alist', 'aliens'], async (ctx) => {
 
         const buttons = [];
 
-        if (totalPages > 1) {
+if (totalPages > 1) {
 
-            buttons.push([
-                {
-                    text: '⬅️ Previous',
-                    callback_data: 'alist_page_0'
-                },
-                {
-                    text: `Page 1/${totalPages}`,
-                    callback_data: 'alist_current'
-                },
-                {
-                    text: 'Next ➡️',
-                    callback_data: 'alist_page_1'
-                }
-            ]);
-
+    buttons.push([
+        {
+            text: 'Next ➡️',
+            callback_data: 'alist_page_1'
+        },
+        {
+            text: 'Close',
+            callback_data: 'alist_close'
         }
+    ]);
+
+} else {
+
+    buttons.push([
+        {
+            text: 'Close',
+            callback_data: 'alist_close'
+        }
+    ]);
+
+}
 
         return ctx.reply(
             message,
@@ -1909,35 +1916,32 @@ bot.action(/^alist_page_(\d+)$/, async (ctx) => {
 
         const buttons = [];
 
-        const row = [];
+const row = [];
 
-        if (safePage > 0) {
+if (safePage > 0) {
 
-            row.push({
-                text: '⬅️ Previous',
-                callback_data:
-                    `alist_page_${safePage - 1}`
-            });
-        }
+    row.push({
+        text: '⬅️ Previous',
+        callback_data:
+            `alist_page_${safePage - 1}`
+    });
+}
 
-        row.push({
-            text:
-                `Page ${safePage + 1}/${totalPages}`,
-            callback_data: 'alist_current'
-        });
+if (safePage < totalPages - 1) {
 
-        if (safePage < totalPages - 1) {
+    row.push({
+        text: 'Next ➡️',
+        callback_data:
+            `alist_page_${safePage + 1}`
+    });
+}
 
-            row.push({
-                text: 'Next ➡️',
-                callback_data:
-                    `alist_page_${safePage + 1}`
-            });
-        }
+row.push({
+    text: 'Close',
+    callback_data: 'alist_close'
+});
 
-        if (totalPages > 1) {
-            buttons.push(row);
-        }
+buttons.push(row);
 
         await ctx.answerCbQuery();
 
@@ -1974,7 +1978,25 @@ bot.action('alist_current', async (ctx) => {
         '📖 You are already on this page.'
     );
 });
+bot.action('alist_close', async (ctx) => {
 
+    try {
+        await ctx.answerCbQuery();
+        return ctx.deleteMessage();
+
+    } catch (error) {
+
+        console.error(
+            '❌ alist close error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not close.',
+            { show_alert: true }
+        );
+    }
+});
 // ==================== STAR MERGE ====================
 
 // ==================== STAR MERGE ====================
