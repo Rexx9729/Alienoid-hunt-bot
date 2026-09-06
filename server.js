@@ -119,6 +119,10 @@ const groupSchema = new mongoose.Schema({
     title: {
         type: String,
         default: 'Unknown Group'
+    },
+    members: {
+        type: [Number],
+        default: []
     }
 }, {
     timestamps: true
@@ -411,6 +415,64 @@ bot.on('my_chat_member', async (ctx) => {
             error
         );
     }
+});
+// ==================== TRACK GROUP BOT USERS ====================
+
+bot.on('message', async (ctx, next) => {
+
+    try {
+
+        if (
+            ctx.chat?.type !== 'group' &&
+            ctx.chat?.type !== 'supergroup'
+        ) {
+            return next();
+        }
+
+        const userId = ctx.from?.id;
+
+        if (!userId) {
+            return next();
+        }
+
+        // Only track registered Alienoid users
+        const user =
+            await User.findOne({
+                userId
+            });
+
+        if (!user) {
+            return next();
+        }
+
+        await Group.updateOne(
+            {
+                chatId: ctx.chat.id
+            },
+            {
+                $addToSet: {
+                    members: userId
+                },
+                $set: {
+                    title:
+                        ctx.chat.title ||
+                        'Unknown Group'
+                }
+            },
+            {
+                upsert: true
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Group member tracking error:',
+            error
+        );
+    }
+
+    return next();
 });
 registerHunt(bot, User);
 registerFight(bot, User);
@@ -5355,6 +5417,377 @@ ${ctx.from.first_name || 'Hunter'} refused the trade request.`,
         );
     }
 );
+// ==================== TOP LEADERBOARD ====================
+
+function sortUsersByLevel(users) {
+
+    return users
+        .map(user => ({
+            user,
+            levelData: getLevelData(user)
+        }))
+        .sort((a, b) => {
+
+            // Higher level first
+            if (
+                b.levelData.level !==
+                a.levelData.level
+            ) {
+                return (
+                    b.levelData.level -
+                    a.levelData.level
+                );
+            }
+
+            // Same level -> higher total XP first
+            if (
+                b.levelData.currentXP !==
+                a.levelData.currentXP
+            ) {
+                return (
+                    b.levelData.currentXP -
+                    a.levelData.currentXP
+                );
+            }
+
+            // Final tie-breaker -> more hunts
+            return (
+                Number(b.user.hunts || 0) -
+                Number(a.user.hunts || 0)
+            );
+        });
+}
+
+
+function buildTopMessage(
+    rankedUsers,
+    currentUserId,
+    rankType
+) {
+
+    let message =
+`🏆 <b>${rankType === 'global'
+    ? 'GLOBAL TOP LEVEL HUNTERS'
+    : 'THIS GROUP TOP LEVEL HUNTERS'}</b>
+
+`;
+
+    if (!rankedUsers.length) {
+
+        message +=
+            `😔 No Alienoid players found.\n\n`;
+
+        return message;
+    }
+
+    const top20 =
+        rankedUsers.slice(0, 20);
+
+    top20.forEach((entry, index) => {
+
+        const user =
+            entry.user;
+
+        const level =
+            entry.levelData.level;
+
+        const name =
+            sanitizeTelegramText(
+                user.username || 'Hunter'
+            );
+
+        message +=
+            `${index + 1}. ${name} — Lv.${level}\n`;
+    });
+
+    // Find current user's exact rank
+    const yourIndex =
+        rankedUsers.findIndex(
+            entry =>
+                Number(entry.user.userId) ===
+                Number(currentUserId)
+        );
+
+    if (yourIndex !== -1) {
+
+        message +=
+            `\n📊 <b>Your rank ${
+                rankType === 'global'
+                    ? 'global'
+                    : 'group'
+            } ${yourIndex + 1}</b>`;
+    }
+
+    return message;
+}
+
+
+// ==================== /TOP ====================
+
+bot.command('top', async (ctx) => {
+
+    try {
+
+        const currentUserId =
+            ctx.from.id;
+
+        const users =
+            await User.find({});
+
+        const rankedUsers =
+            sortUsersByLevel(users);
+
+        return ctx.reply(
+
+            buildTopMessage(
+                rankedUsers,
+                currentUserId,
+                'global'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🌍 Global',
+                                callback_data:
+                                    'top_global'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'top_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /top error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load leaderboard.'
+        );
+    }
+});
+
+
+// ==================== TOP GLOBAL ====================
+
+bot.action('top_global', async (ctx) => {
+
+    try {
+
+        const currentUserId =
+            ctx.from.id;
+
+        const users =
+            await User.find({});
+
+        const rankedUsers =
+            sortUsersByLevel(users);
+
+        await ctx.answerCbQuery();
+
+        return ctx.editMessageText(
+
+            buildTopMessage(
+                rankedUsers,
+                currentUserId,
+                'global'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '👥 This Group',
+                                callback_data:
+                                    'top_group'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'top_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Global leaderboard error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not load leaderboard.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
+
+
+// ==================== TOP THIS GROUP ====================
+
+bot.action('top_group', async (ctx) => {
+
+    try {
+
+        if (
+            ctx.chat?.type !== 'group' &&
+            ctx.chat?.type !== 'supergroup'
+        ) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This is only available in groups.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        const currentUserId =
+            ctx.from.id;
+
+        const group =
+            await Group.findOne({
+                chatId: ctx.chat.id
+            });
+
+        if (
+            !group ||
+            !Array.isArray(group.members) ||
+            group.members.length === 0
+        ) {
+
+            await ctx.answerCbQuery();
+
+            return ctx.editMessageText(
+
+                `👥 <b>THIS GROUP</b>\n\n` +
+                `😔 No Alienoid players found.\n\n` +
+                `📊 <b>Your rank group — N/A</b>`,
+
+                {
+                    parse_mode: 'HTML',
+
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: 'Close',
+                                    callback_data:
+                                        'top_close'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+        }
+
+        const users =
+            await User.find({
+                userId: {
+                    $in: group.members
+                }
+            });
+
+        const rankedUsers =
+            sortUsersByLevel(users);
+
+        await ctx.answerCbQuery();
+
+        return ctx.editMessageText(
+
+            buildTopMessage(
+                rankedUsers,
+                currentUserId,
+                'group'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🌍 Global',
+                                callback_data:
+                                    'top_global'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'top_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Group leaderboard error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not load group leaderboard.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
+
+
+// ==================== TOP CLOSE ====================
+
+bot.action('top_close', async (ctx) => {
+
+    try {
+
+        await ctx.answerCbQuery();
+
+        return ctx.deleteMessage();
+
+    } catch (error) {
+
+        console.error(
+            '❌ /top close error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not close.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
 // ==================== HELP MENU ====================
 
 const helpKeyboard = {
