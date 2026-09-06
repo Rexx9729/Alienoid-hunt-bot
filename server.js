@@ -474,6 +474,102 @@ bot.on('message', async (ctx, next) => {
 
     return next();
 });
+// ==================== RICHEST LEADERBOARD ====================
+
+function sortUsersByRupees(users) {
+
+    return users
+        .slice()
+        .sort((a, b) => {
+
+            // Higher Rupees first
+            const rupeesDifference =
+                Number(b.rupees || 0) -
+                Number(a.rupees || 0);
+
+            if (rupeesDifference !== 0) {
+                return rupeesDifference;
+            }
+
+            // Tie breaker: higher level
+            const levelDifference =
+                getLevelData(b).level -
+                getLevelData(a).level;
+
+            if (levelDifference !== 0) {
+                return levelDifference;
+            }
+
+            // Final tie breaker: higher XP
+            return (
+                getLevelData(b).currentXP -
+                getLevelData(a).currentXP
+            );
+        });
+}
+
+
+function buildRichestMessage(
+    rankedUsers,
+    currentUserId,
+    rankType
+) {
+
+    let message =
+`💰 <b>${
+    rankType === 'global'
+        ? 'GLOBAL RICHEST HUNTERS'
+        : 'THIS GROUP RICHEST HUNTERS'
+}</b>
+
+`;
+
+    if (!rankedUsers.length) {
+
+        message +=
+            `😔 No Alienoid players found.\n\n`;
+
+        return message;
+    }
+
+    const top20 =
+        rankedUsers.slice(0, 20);
+
+    top20.forEach((user, index) => {
+
+        const name =
+            sanitizeTelegramText(
+                user.username || 'Hunter'
+            );
+
+        const rupees =
+            Number(user.rupees || 0)
+                .toLocaleString();
+
+        message +=
+            `${index + 1}. ${name} — ₹${rupees}\n`;
+    });
+
+    // Find exact rank
+    const yourIndex =
+        rankedUsers.findIndex(
+            user =>
+                Number(user.userId) ===
+                Number(currentUserId)
+        );
+
+    if (yourIndex !== -1) {
+
+        message +=
+            `\n📊 <b>Your rank ${
+                rankType === 'global'
+                    ? 'global'
+                    : 'group'
+            } ${yourIndex + 1}</b>`;
+    }
+
+    return message;
+}
 registerHunt(bot, User);
 registerFight(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
@@ -879,7 +975,277 @@ bot.command('removeadmin', async (ctx) => {
         );
     }
 });
+// ==================== /RICHEST ====================
 
+bot.command('richest', async (ctx) => {
+
+    try {
+
+        const currentUserId =
+            ctx.from.id;
+
+        const users =
+            await User.find({});
+
+        const rankedUsers =
+            sortUsersByRupees(users);
+
+        return ctx.reply(
+
+            buildRichestMessage(
+                rankedUsers,
+                currentUserId,
+                'global'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '👥 This Group',
+                                callback_data:
+                                    'richest_group'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'richest_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /richest error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load richest leaderboard.'
+        );
+    }
+});
+
+
+// ==================== RICHEST GLOBAL ====================
+
+bot.action('richest_global', async (ctx) => {
+
+    try {
+
+        const currentUserId =
+            ctx.from.id;
+
+        const users =
+            await User.find({});
+
+        const rankedUsers =
+            sortUsersByRupees(users);
+
+        await ctx.answerCbQuery();
+
+        return ctx.editMessageText(
+
+            buildRichestMessage(
+                rankedUsers,
+                currentUserId,
+                'global'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '👥 This Group',
+                                callback_data:
+                                    'richest_group'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'richest_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Richest global error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not load leaderboard.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
+
+
+// ==================== RICHEST THIS GROUP ====================
+
+bot.action('richest_group', async (ctx) => {
+
+    try {
+
+        if (
+            ctx.chat?.type !== 'group' &&
+            ctx.chat?.type !== 'supergroup'
+        ) {
+
+            return ctx.answerCbQuery(
+                '⚠️ This is only available in groups.',
+                {
+                    show_alert: true
+                }
+            );
+        }
+
+        const currentUserId =
+            ctx.from.id;
+
+        const group =
+            await Group.findOne({
+                chatId: ctx.chat.id
+            });
+
+        if (
+            !group ||
+            !Array.isArray(group.members) ||
+            group.members.length === 0
+        ) {
+
+            await ctx.answerCbQuery();
+
+            return ctx.editMessageText(
+
+                `💰 <b>THIS GROUP RICHEST HUNTERS</b>\n\n` +
+                `😔 No Alienoid players found.\n\n` +
+                `📊 <b>Your rank group N/A</b>`,
+
+                {
+                    parse_mode: 'HTML',
+
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '🌍 Global',
+                                    callback_data:
+                                        'richest_global'
+                                },
+                                {
+                                    text: 'Close',
+                                    callback_data:
+                                        'richest_close'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+        }
+
+        const users =
+            await User.find({
+                userId: {
+                    $in: group.members
+                }
+            });
+
+        const rankedUsers =
+            sortUsersByRupees(users);
+
+        await ctx.answerCbQuery();
+
+        return ctx.editMessageText(
+
+            buildRichestMessage(
+                rankedUsers,
+                currentUserId,
+                'group'
+            ),
+
+            {
+                parse_mode: 'HTML',
+
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🌍 Global',
+                                callback_data:
+                                    'richest_global'
+                            },
+                            {
+                                text: 'Close',
+                                callback_data:
+                                    'richest_close'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Richest group error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not load group leaderboard.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
+
+
+// ==================== RICHEST CLOSE ====================
+
+bot.action('richest_close', async (ctx) => {
+
+    try {
+
+        await ctx.answerCbQuery();
+
+        return ctx.deleteMessage();
+
+    } catch (error) {
+
+        console.error(
+            '❌ /richest close error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not close.',
+            {
+                show_alert: true
+            }
+        );
+    }
+});
 // ==================== /REDEEMCODE ====================
 
 bot.command('redeemcode', async (ctx) => {
