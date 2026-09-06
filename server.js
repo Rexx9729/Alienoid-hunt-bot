@@ -5552,9 +5552,9 @@ bot.command('top', async (ctx) => {
                     inline_keyboard: [
                         [
                             {
-                                text: '🌍 Global',
+                                text: '👥 This Group',
                                 callback_data:
-                                    'top_global'
+                                    'top_group'
                             },
                             {
                                 text: 'Close',
