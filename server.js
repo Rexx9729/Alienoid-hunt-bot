@@ -285,7 +285,7 @@ bot.use(
 // ==================== GLOBAL CALLBACK DOUBLE-TAP GUARD ====================
 
 const activeCallbacks = new Set();
-const CALLBACK_COOLDOWN = 2000; // 2 seconds
+const CALLBACK_COOLDOWN = 1200; // 1.2 seconds
 
 bot.use(async (ctx, next) => {
 
@@ -660,39 +660,39 @@ const ALIEN_ECONOMY = {
 
 const STAR_MERGE_FEES = {
     Basic: {
-        1: 4000,
-        2: 6000,
-        3: 8000
+        1: 10000,
+        2: 20000,
+        3: 30000
     },
 
     Common: {
-        1: 6000,
-        2: 8000,
-        3: 10000
+        1: 16000,
+        2: 25000,
+        3: 40000
     },
 
     Rare: {
-        1: 8000,
-        2: 10000,
-        3: 12000
+        1: 20000,
+        2: 30000,
+        3: 50000
     },
 
     Legendary: {
-        1: 10000,
-        2: 12000,
-        3: 15000
-    },
-
-    Cosmic: {
-        1: 15000,
-        2: 20000,
-        3: 28000
-    },
-
-    God: {
         1: 30000,
         2: 50000,
         3: 80000
+    },
+
+    Cosmic: {
+        1: 50000,
+        2: 80000,
+        3: 120000
+    },
+
+    God: {
+        1: 100000,
+        2: 150000,
+        3: 200000
     }
 };
 
@@ -4326,9 +4326,9 @@ const SHOP_ITEMS = {
 function getShopMessage(user) {
 
     return (
-`╔══════════════════════╗
+`╔══════════════════╗
        🛒 ALIENOID SHOP
-╚══════════════════════╝
+╚══════════════════╝
 
 💰 Your Balance: ₹${user.rupees.toLocaleString()}
 
