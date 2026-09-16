@@ -32,7 +32,7 @@ const {
 
 const MAX_DECK_SIZE = 4;
 const MAX_SCANS_PER_HUNT = 3;
-
+const NORMAL_SCAN_COST = 1000;
 
 // ==================== HELPERS ====================
 
@@ -851,6 +851,22 @@ bot.action(
                     { show_alert: true }
                 );
             }
+
+            // ====================
+// NORMAL SCAN COST
+// ====================
+
+if (scanType === 'Normal') {
+
+    if (user.rupees < NORMAL_SCAN_COST) {
+        return ctx.answerCbQuery(
+            `❌ Not enough Rupees!\n\nRequired: ₹${NORMAL_SCAN_COST}`,
+            { show_alert: true }
+        );
+    }
+
+    user.rupees -= NORMAL_SCAN_COST;
+}
 
             // ====================
             // CHECK SCAN INVENTORY
