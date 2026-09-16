@@ -3465,6 +3465,193 @@ ${attackText}
         );
     }
 });
+
+// ==================== ALIEN NICKNAME ====================
+//
+// /nickname alienname nickname
+// /nickname alienname 1s nickname
+// /nickname alienname 2s nickname
+// /nickname alienname 3s nickname
+//
+
+bot.command('nickname', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({ userId });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (!user.aliens || user.aliens.length === 0) {
+            return ctx.reply(
+                '🎒 Your alien bag is empty!'
+            );
+        }
+
+        const input = ctx.message.text
+            .trim()
+            .replace(/^\/nickname(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter alien name and nickname.\n\n' +
+                'Examples:\n' +
+                '/nickname Heatblast Ghost\n' +
+                '/nickname Heatblast 1s Ghost\n' +
+                '/nickname Heatblast 2s Ghost\n' +
+                '/nickname Heatblast 3s Ghost'
+            );
+        }
+
+        // ====================
+        // CHECK STAR
+        // ====================
+
+        let star = 0;
+        let remaining = input;
+
+        const starMatch = input.match(
+            /\s+([123]s)\s+/i
+        );
+
+        if (starMatch) {
+
+            star =
+                Number(
+                    starMatch[1].charAt(0)
+                );
+
+            remaining =
+                input
+                    .replace(
+                        /\s+[123]s\s+/i,
+                        ' '
+                    )
+                    .trim();
+        }
+
+        // ====================
+        // SPLIT NAME + NICKNAME
+        // ====================
+
+        const parts = remaining.split(/\s+/);
+
+        if (parts.length < 2) {
+            return ctx.reply(
+                '⚠️ Please provide both alien name and nickname.\n\n' +
+                'Example:\n' +
+                '/nickname Heatblast Ghost'
+            );
+        }
+
+        // First word(s) = alien name
+        // Last word(s) = nickname
+        //
+        // Try to match the alien using every possible split.
+
+        let alien = null;
+        let nickname = '';
+
+        for (let i = 1; i < parts.length; i++) {
+
+            const possibleAlienName =
+                parts.slice(0, i).join(' ');
+
+            const possibleNickname =
+                parts.slice(i).join(' ');
+
+            const found =
+                user.aliens.find(a => {
+
+                    const nameMatch =
+                        String(
+                            a.name || ''
+                        ).toLowerCase() ===
+                        possibleAlienName.toLowerCase();
+
+                    const nicknameMatch =
+                        String(
+                            a.nickname || ''
+                        ).toLowerCase() ===
+                        possibleAlienName.toLowerCase();
+
+                    return (
+                        (nameMatch || nicknameMatch) &&
+                        Number(a.star || 0) === star
+                    );
+                });
+
+            if (found) {
+                alien = found;
+                nickname = possibleNickname;
+                break;
+            }
+        }
+
+        if (!alien) {
+
+            const stars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
+
+            return ctx.reply(
+                `❌ ${stars}${remaining} was not found in your collection.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        if (!nickname.trim()) {
+            return ctx.reply(
+                '⚠️ Please enter a valid nickname.'
+            );
+        }
+
+        // ====================
+        // SET NICKNAME
+        // ====================
+
+        const oldNickname =
+            alien.nickname || alien.name || 'None';
+
+        alien.nickname =
+            nickname.trim();
+
+        await user.save();
+
+        const stars =
+            Number(alien.star || 0) > 0
+                ? `${'⭐'.repeat(alien.star)} `
+                : '';
+
+        return ctx.reply(
+            `✅ <b>ALIEN NICKNAME UPDATED</b>\n\n` +
+            `👽 Alien : ${alien.name}\n` +
+            `⭐ Star : ${stars || 'None'}\n` +
+            `🏷️ Old Nickname : ${oldNickname}\n` +
+            `✨ New Nickname : ${alien.nickname}`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /nickname error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while changing the nickname.'
+        );
+    }
+});
 // ==================== ALIEN DECK — SET / OUT ====================
 
 // /set alienname
@@ -3728,6 +3915,328 @@ bot.command('out', async (ctx) => {
 
         return ctx.reply(
             '❌ Something went wrong while removing your alien.'
+        );
+    }
+});
+// ==================== FLEE ALIEN ====================
+//
+// /flee alienname
+// /flee alienname 1s
+// /flee alienname 2s
+// /flee alienname 3s
+//
+
+bot.command('flee', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({
+            userId
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (
+            !user.aliens ||
+            user.aliens.length === 0
+        ) {
+            return ctx.reply(
+                '🎒 Your alien bag is empty!'
+            );
+        }
+
+        // ====================
+        // GET INPUT
+        // ====================
+
+        const input = ctx.message.text
+            .trim()
+            .replace(/^\/flee(?:@\w+)?\s*/i, '');
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/flee Heatblast\n' +
+                '/flee Heatblast 1s\n' +
+                '/flee Heatblast 2s\n' +
+                '/flee Heatblast 3s'
+            );
+        }
+
+        // ====================
+        // STAR SELECTOR
+        // ====================
+
+        let star = 0;
+        let alienName = input;
+
+        const starMatch =
+            input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+
+            star =
+                Number(
+                    starMatch[1].charAt(0)
+                );
+
+            alienName =
+                input
+                    .replace(
+                        /\s+[123]s$/i,
+                        ''
+                    )
+                    .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // ====================
+        // FIND ALIEN
+        // NAME OR NICKNAME
+        // + EXACT STAR
+        // ====================
+
+        const alienIndex =
+            user.aliens.findIndex(alien => {
+
+                const nameMatch =
+                    String(
+                        alien.name || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                const nicknameMatch =
+                    String(
+                        alien.nickname || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                return (
+                    (nameMatch || nicknameMatch) &&
+                    Number(alien.star || 0) === star
+                );
+            });
+
+        if (alienIndex === -1) {
+
+            const stars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} was not found in your bag.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        const alien =
+            user.aliens[alienIndex];
+
+        const stars =
+            Number(alien.star || 0) > 0
+                ? `${'⭐'.repeat(alien.star)} `
+                : '';
+
+        const displayName =
+            alien.nickname ||
+            alien.name ||
+            'Unknown Alien';
+
+        // ====================
+        // CHECK DECK
+        // ====================
+
+        if (
+            alien.alienId &&
+            user.deck?.includes(alien.alienId)
+        ) {
+            return ctx.reply(
+                `❌ ${stars}${displayName} is currently in your deck.\n\n` +
+                `Use /out ${displayName}${star > 0 ? ` ${star}s` : ''} first, then use /flee.`
+            );
+        }
+
+        // ====================
+        // CONFIRMATION
+        // ====================
+
+        return ctx.reply(
+            `⚠️ <b>Are you sure?</b>\n\n` +
+            `🔥 ${stars}${displayName} will be removed from your collection.\n\n` +
+            `This action cannot be undone.`,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: 'Yes',
+                                callback_data:
+                                    `flee_yes_${alien.alienId}`
+                            },
+                            {
+                                text: 'No',
+                                callback_data:
+                                    'flee_no'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /flee error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while fleeing the alien.'
+        );
+    }
+});
+
+
+// ==================== FLEE — YES
+// ====================
+
+bot.action(/^flee_yes_(.+)$/, async (ctx) => {
+    try {
+
+        const alienId =
+            ctx.match[1];
+
+        const user =
+            await User.findOne({
+                userId: ctx.from.id
+            });
+
+        if (!user) {
+            return ctx.answerCbQuery(
+                '⚠️ User not found.',
+                { show_alert: true }
+            );
+        }
+
+        const alienIndex =
+            user.aliens.findIndex(
+                alien =>
+                    String(alien.alienId) ===
+                    String(alienId)
+            );
+
+        if (alienIndex === -1) {
+            await ctx.answerCbQuery(
+                '⚠️ This alien is no longer in your collection.',
+                { show_alert: true }
+            );
+
+            return ctx.editMessageText(
+                '⚠️ This alien is no longer in your collection.'
+            );
+        }
+
+        const alien =
+            user.aliens[alienIndex];
+
+        // Safety check:
+        // Alien must not be in deck
+        if (
+            alien.alienId &&
+            user.deck?.includes(alien.alienId)
+        ) {
+            return ctx.answerCbQuery(
+                '❌ This alien is currently in your deck.',
+                { show_alert: true }
+            );
+        }
+
+        const stars =
+            Number(alien.star || 0) > 0
+                ? `${'⭐'.repeat(alien.star)} `
+                : '';
+
+        const displayName =
+            alien.nickname ||
+            alien.name ||
+            'Unknown Alien';
+
+        // Remove exactly ONE alien
+        user.aliens.splice(
+            alienIndex,
+            1
+        );
+
+        await user.save();
+
+        await ctx.answerCbQuery(
+            'Alien removed.'
+        );
+
+        return ctx.editMessageText(
+            `🔥 <b>ALIEN FLED</b>\n\n` +
+            `${stars}${displayName} has been removed from your collection.`,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: []
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Flee confirmation error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Something went wrong.',
+            { show_alert: true }
+        );
+    }
+});
+
+
+// ==================== FLEE — NO
+// ====================
+
+bot.action('flee_no', async (ctx) => {
+    try {
+
+        await ctx.answerCbQuery(
+            'Cancelled.'
+        );
+
+        return ctx.editMessageText(
+            '❌ Flee cancelled.'
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Flee cancel error:',
+            error
+        );
+
+        return ctx.answerCbQuery(
+            '❌ Could not cancel.',
+            { show_alert: true }
         );
     }
 });
