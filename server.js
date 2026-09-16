@@ -4288,37 +4288,37 @@ bot.command("explore", async (ctx) => {
 const SHOP_ITEMS = {
     healerx: {
         name: 'Healerx',
-        price: 800,
+        price: 2000,
         inventoryKey: 'healerx'
     },
 
     buff: {
         name: 'Buff',
-        price: 1000,
+        price: 1500,
         inventoryKey: 'buff'
     },
 
     deff: {
         name: 'Deff',
-        price: 1000,
+        price: 1500,
         inventoryKey: 'defense'
     },
 
     super: {
         name: 'S.Scan',
-        price: 2500,
+        price: 5000,
         inventoryKey: 'superScan'
     },
 
     mega: {
         name: 'M.Scan',
-        price: 5500,
+        price: 15000,
         inventoryKey: 'megaScan'
     },
 
     absolute: {
         name: 'A.Scan',
-        price: 15000,
+        price: 28000,
         inventoryKey: 'absoluteScan'
     }
 };
@@ -4332,12 +4332,12 @@ function getShopMessage(user) {
 
 💰 Your Balance: ₹${user.rupees.toLocaleString()}
 
-🧪 HEALERX : ₹800
-💊 BUFF : ₹1,000
-🛡️ DEFF : ₹1,000
-⚡ SUPER SCAN : ₹2,500
-☣️ MEGA SCAN : ₹5,500
-☢️ ABSOLUTE SCAN : ₹15,000
+🧪 HEALERX : ₹2000
+💊 BUFF : ₹1,500
+🛡️ DEFF : ₹1,500
+⚡ SUPER SCAN : ₹5,000
+☣️ MEGA SCAN : ₹15,000
+☢️ ABSOLUTE SCAN : ₹28,000
 
 Tap to purchase:-`
     );
