@@ -2101,18 +2101,46 @@ bot.start(async (ctx) => {
 
         `START NOW YOUR THRILLER JOURNEY ⚡`,
         {
-            parse_mode: 'HTML'
+            parse_mode: 'HTML',
+            reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: '📰 News',
+                        url: 'https://t.me/AlienoidxUpdates'
+                    },
+                    {
+                        text: '🆘 Support',
+                        url: 'https://t.me/AlienoidxArena'
+                    }
+                ]
+            ]
         }
-    );
+    }
+);           
     }
     else {
     return ctx.reply(
         `🔱HELLO ${username} Welcome to Alienoid\n` +
         `How can I help you?\n` +
-        `Type /help for help !!`
-    );
-}
-    });
+        `Type /help for help !!`,
+         {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: '📰 News',
+                        url: 'https://t.me/AlienoidxUpdates'
+                    },
+                    {
+                        text: '🆘 Support',
+                        url: 'https://t.me/AlienoidxArena'
+                    }
+                ]
+            ]
+        }
+    }
+);
 
 bot.command(['profile', 'me'], async (ctx) => {
     const userId = ctx.from.id;
@@ -6761,27 +6789,27 @@ bot.action('help_items', async (ctx) => {
     const message =
 `🎒 ALIENOID HUNT — ITEMS
 
-🧪 HEALERX — ₹200
+🧪 HEALERX — 
 Restores HP during battle.
 
-💊 BUFF — ₹150
+💊 BUFF — 
 Provides a battle advantage.
 Selected before the battle starts.
 
-🛡️ DEFENSE — ₹120
+🛡️ DEFENSE —
 Provides a defensive advantage.
 Selected before the battle starts.
 
-🔍 NORMAL SCAN — ₹10
+🔍 NORMAL SCAN — 
 Used to capture Basic, Common and Rare aliens.
 
 ⚡ SUPER SCAN — ₹1,000
 A powerful scan with better chances against higher rarities.
 
-☣️ MEGA SCAN — ₹2,500
+☣️ MEGA SCAN — 
 A stronger scan capable of reaching high-tier aliens.
 
-☢️ ABSOLUTE SCAN — ₹10,000
+☢️ ABSOLUTE SCAN — 
 The strongest scan.
 It can capture Legendary and has a chance against Cosmic and Alien X.`;
 
@@ -6827,36 +6855,7 @@ Normal → 100%
 The Star System works across all rarities.
 
 💰 MERGE FEES
-
-Basic
-₹4000 → 1★
-₹6000 → 2★
-₹8000 → 3★
-
-Common
-₹6000 → 1★
-₹8000 → 2★
-₹10,000 → 3★
-
-Rare
-₹8000 → 1★
-₹10,000 → 2★
-₹12,000 → 3★
-
-Legendary
-₹10,000 → 1★
-₹12,000 → 2★
-₹15,000 → 3★
-
-Cosmic
-₹15,000 → 1★
-₹20,000 → 2★
-₹28,000 → 3★
-
-God
-30,000-> 1⭐
-50,000-> 2⭐
-80,000-> 3⭐
+Will appear when you are merging any alien 
 `;
 
     await ctx.answerCbQuery();
@@ -6874,21 +6873,34 @@ God
 
 bot.action('help_support', async (ctx) => {
 
-    const message =
-`🆘 ALIENOID HUNT — SUPPORT
-
-Our official support group is currently being prepared.
-
-Please check back soon! 🔱`;
+    const supportLink = 'https://t.me/AlienoidxArena';
 
     await ctx.answerCbQuery();
-    await ctx.editMessageText(message, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '⬅️ Back', callback_data: 'help_main' }]
-            ]
+
+    await ctx.editMessageText(
+`🆘 <b>ALIENOID HUNT — SUPPORT</b>
+
+Need help? Join our official support group! 🔱`,
+        {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '🆘 Join Support Group',
+                            url: supportLink
+                        }
+                    ],
+                    [
+                        {
+                            text: '⬅️ Back',
+                            callback_data: 'help_main'
+                        }
+                    ]
+                ]
+            }
         }
-    });
+    );
 });
 
 
