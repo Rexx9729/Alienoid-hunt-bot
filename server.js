@@ -78,6 +78,18 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
 },
+        referredBy: {
+        type: Number,
+        default: null
+    },
+    referralCount: {
+        type: Number,
+        default: 0
+    },
+    claimedReferralMilestones: {
+        type: [Number],
+        default: []
+    },
     inventory: {
         healerx: { type: Number, default: 0 },
         buff: { type: Number, default: 0 },
@@ -2075,12 +2087,46 @@ bot.start(async (ctx) => {
             starter.imageFileId || ''
     };
 
+        // ==================== REFERRAL REWARD ====================
+    let referralReward = false;
+    let referrer = null;
+
+    const startPayload = ctx.startPayload;
+
+    if (
+        startPayload &&
+        startPayload.startsWith('ref_')
+    ) {
+        const referrerId = Number(
+            startPayload.replace('ref_', '')
+        );
+
+        if (
+            Number.isInteger(referrerId) &&
+            referrerId !== userId
+        ) {
+            referrer = await User.findOne({
+                userId: referrerId
+            });
+
+            if (referrer) {
+                referralReward = true;
+            }
+        }
+    }
+
     user = new User({
 
         userId,
         username,
 
-        rupees: 1000,
+        rupees: referralReward
+            ? 1500
+            : 1000,
+
+        referredBy: referralReward
+            ? referrer.userId
+            : null,
 
         aliens: [
             starterAlien
@@ -2088,6 +2134,79 @@ bot.start(async (ctx) => {
     });
 
     await user.save();
+
+    // Give referrer ₹500
+    if (referralReward && referrer) {
+
+        referrer.rupees += 500;
+        referrer.referralCount += 1;
+
+        // Referral milestones
+        const milestones = {
+            5: {
+                rupees: 1000,
+                superScan: 1
+            },
+            10: {
+                rupees: 1500,
+                superScan: 2
+            },
+            20: {
+                rupees: 2000,
+                megaScan: 1
+            },
+            30: {
+                rupees: 3000,
+                megaScan: 2
+            },
+            50: {
+                rupees: 10000,
+                absoluteScan: 1
+            }
+        };
+
+        const currentReferrals =
+            referrer.referralCount;
+
+        for (const milestone of Object.keys(milestones)) {
+
+            const required =
+                Number(milestone);
+
+            if (
+                currentReferrals >= required &&
+                !referrer.claimedReferralMilestones.includes(required)
+            ) {
+
+                const reward =
+                    milestones[required];
+
+                referrer.rupees +=
+                    reward.rupees;
+
+                if (reward.superScan) {
+                    referrer.inventory.superScan +=
+                        reward.superScan;
+                }
+
+                if (reward.megaScan) {
+                    referrer.inventory.megaScan +=
+                        reward.megaScan;
+                }
+
+                if (reward.absoluteScan) {
+                    referrer.inventory.absoluteScan +=
+                        reward.absoluteScan;
+                }
+
+                referrer.claimedReferralMilestones.push(
+                    required
+                );
+            }
+        }
+
+        await referrer.save();
+    }
 
     return ctx.reply(
         `🔱 Hello ${username}, welcome to the Alienoid ||\n\n` +
@@ -2530,6 +2649,122 @@ bot.action('alist_close', async (ctx) => {
         return ctx.answerCbQuery(
             '❌ Could not close.',
             { show_alert: true }
+        );
+    }
+});
+
+// ==================== REFER & EARN ====================
+
+bot.command('refer', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({
+            userId
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        const botUsername =
+            ctx.botInfo?.username;
+
+        if (!botUsername) {
+            return ctx.reply(
+                '❌ Could not generate referral link.'
+            );
+        }
+
+        const referralLink =
+            `https://t.me/${botUsername}?start=ref_${userId}`;
+
+        const referralCount =
+            Number(user.referralCount || 0);
+
+        const claimed =
+            user.claimedReferralMilestones || [];
+
+        const milestones = [
+            {
+                count: 5,
+                reward: '🧪 1 Super Scan + ₹1,000'
+            },
+            {
+                count: 10,
+                reward: '🧪 2 Super Scans + ₹1,500'
+            },
+            {
+                count: 20,
+                reward: '☣️ 1 Mega Scan + ₹2,000'
+            },
+            {
+                count: 30,
+                reward: '☣️ 2 Mega Scans + ₹3,000'
+            },
+            {
+                count: 50,
+                reward: '☢️ 1 Absolute Scan + ₹10,000'
+            }
+        ];
+
+        let milestoneText = '';
+
+        for (const milestone of milestones) {
+
+            const completed =
+                claimed.includes(milestone.count);
+
+            const reached =
+                referralCount >= milestone.count;
+
+            const status =
+                completed || reached
+                    ? '✅'
+                    : '🔒';
+
+            milestoneText +=
+                `${status} ${milestone.count} Referrals → ${milestone.reward}\n`;
+        }
+
+        const message =
+`🎁 <b>REFER &amp; EARN</b>
+
+Invite your friends to Alienoid and earn rewards!
+
+🔗 <b>Your Referral Link:</b>
+<code>${referralLink}</code>
+
+👥 <b>Total Referrals:</b> ${referralCount}
+💰 <b>Referral Earnings:</b> ₹${referralCount * 500}
+
+🎯 <b>Milestones:</b>
+${milestoneText}
+💸 <b>Every successful referral:</b>
+You +₹500
+New User +₹500
+
+🔥 No referral limit! Keep inviting friends.`;
+
+        return ctx.reply(
+            message,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ Refer command error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong. Please try again.'
         );
     }
 });
