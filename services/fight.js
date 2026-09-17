@@ -442,7 +442,10 @@ async function finishFight(
         return;
     }
 
-    if (fight.status === 'finished') {
+    if (fight.status === 'finished'
+       ||
+    fight.status === 'cancelled' ||
+    fight.status === 'resetting') {
         return;
     }
 
@@ -954,11 +957,15 @@ Your balance: ₹${challenger.rupees}`
                         gambleAmount || 0,
 
                     pot:
-                        gambleAmount
-                            ? gambleAmount * 2
-                            : 0,
+    gambleAmount
+        ? gambleAmount * 2
+        : 0,
 
-                    chatId:
+// Track exactly which Gamble stakes were actually deducted.
+challengerStakeDeducted: false,
+opponentStakeDeducted: false,
+
+chatId:
                         ctx.chat.id,
 
                     messageId:
@@ -1501,6 +1508,7 @@ ${escapeHtml(
                             }
                         );
                     }
+                    fight.challengerStakeDeducted = true;
 
                     // Atomic deduction from
                     // opponent.
@@ -1544,6 +1552,7 @@ ${escapeHtml(
                                 }
                             }
                         );
+                        fight.challengerStakeDeducted = false;
 
                         return ctx.answerCbQuery(
                             '❌ Opponent no longer has enough Rupees.',
@@ -1552,6 +1561,7 @@ ${escapeHtml(
                             }
                         );
                     }
+                    fight.opponentStakeDeducted = true;
                               }
 
           // ====================
@@ -2275,9 +2285,143 @@ ${escapeHtml(
     );
 }
 
+// ==================== RESET FIGHT ====================
+
+async function resetFightForUser(userId, User) {
+    const numericUserId = Number(userId);
+
+    const fightId =
+        busyUsers.get(numericUserId);
+
+    if (!fightId) {
+        return {
+            found: false,
+            refunded: 0
+        };
+    }
+
+    const fight =
+        fights.get(fightId);
+
+    if (!fight) {
+        busyUsers.delete(numericUserId);
+
+        return {
+            found: false,
+            refunded: 0
+        };
+    }
+
+    // Stop any later callback from finishing/rewarding this fight.
+    if (
+        fight.status === 'finished'
+    ) {
+        busyUsers.delete(
+            fight.challengerId
+        );
+
+        busyUsers.delete(
+            fight.opponentId
+        );
+
+        fights.delete(fight.id);
+
+        return {
+            found: false,
+            refunded: 0
+        };
+    }
+
+    fight.status = 'resetting';
+    fight.processing = true;
+
+    let refunded = 0;
+
+    try {
+        // Refund ONLY stakes that were actually deducted.
+        if (
+            fight.mode === 'gamble'
+        ) {
+            const stake =
+                Number(
+                    fight.gambleAmount || 0
+                );
+
+            if (
+                stake > 0 &&
+                fight.challengerStakeDeducted
+            ) {
+                await User.updateOne(
+                    {
+                        userId:
+                            fight.challengerId
+                    },
+                    {
+                        $inc: {
+                            rupees: stake
+                        }
+                    }
+                );
+
+                refunded +=
+                    fight.challengerId ===
+                    numericUserId
+                        ? stake
+                        : 0;
+            }
+
+            if (
+                stake > 0 &&
+                fight.opponentStakeDeducted
+            ) {
+                await User.updateOne(
+                    {
+                        userId:
+                            fight.opponentId
+                    },
+                    {
+                        $inc: {
+                            rupees: stake
+                        }
+                    }
+                );
+
+                refunded +=
+                    fight.opponentId ===
+                    numericUserId
+                        ? stake
+                        : 0;
+            }
+
+            // Prevent any second reset from refunding again.
+            fight.challengerStakeDeducted = false;
+            fight.opponentStakeDeducted = false;
+        }
+
+    } finally {
+        busyUsers.delete(
+            fight.challengerId
+        );
+
+        busyUsers.delete(
+            fight.opponentId
+        );
+
+        fights.delete(
+            fight.id
+        );
+    }
+
+    return {
+        found: true,
+        refunded
+    };
+}
+
 
 // ==================== EXPORT ====================
 
 module.exports = {
-    registerFight
+    registerFight,
+    resetFightForUser
 };
