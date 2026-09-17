@@ -723,7 +723,10 @@ function sanitizeTelegramText(value = '') {
             const code = char.codePointAt(0);
             return !(code >= 0xD800 && code <= 0xDFFF);
         })
-        .join('');
+        .join('')
+    .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 // ==================== TELEGRAM COMMAND MENU ====================
