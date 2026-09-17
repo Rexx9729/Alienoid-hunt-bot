@@ -19,7 +19,7 @@ const {
     createHpBar
 } = require('./services/battleEngine');
 const { registerHunt } = require('./services/hunt');
-const { registerFight } = require('./services/fight');
+const { registerFight, resetFightForUser } = require('./services/fight');
 const exploreCooldowns = new Map();
 // Express Keep-Alive Server
 const app = express();
@@ -772,6 +772,87 @@ bot.telegram.setMyCommands([
     { command: 'help', description: 'Open Alienoid Hunt Help' }
 ], {
     scope: { type: 'all_group_chats' }
+});
+// ==================== /RESET ====================
+
+bot.command('reset', async (ctx) => {
+    try {
+        const userId =
+            Number(ctx.from.id);
+
+        let huntRefund = 0;
+
+        // ====================
+        // RESET HUNT
+        // ====================
+
+        if (ctx.session?.hunt) {
+            huntRefund =
+                Number(HUNT_COST || 20);
+
+            await User.updateOne(
+                {
+                    userId
+                },
+                {
+                    $inc: {
+                        rupees: huntRefund
+                    }
+                }
+            );
+
+            ctx.session.hunt = null;
+        }
+
+        // ====================
+        // RESET FIGHT
+        // ====================
+
+        const fightResult =
+            await resetFightForUser(
+                userId,
+                User
+            );
+
+        const fightRefund =
+            Number(
+                fightResult?.refunded || 0
+            );
+
+        const totalRefund =
+            huntRefund +
+            fightRefund;
+
+        // ====================
+        // RESPONSE
+        // ====================
+
+        if (
+            !ctx.session?.hunt &&
+            !fightResult?.found
+        ) {
+            return ctx.reply(
+                'ℹ️ No active Hunt or Fight found.'
+            );
+        }
+
+        return ctx.reply(
+            `✅ RESET COMPLETE\n\n` +
+            `❌ Active Hunt/Fight cancelled.\n` +
+            `💰 Refunded: ₹${totalRefund}\n\n` +
+            `You can start again now.`
+        );
+
+    } catch (error) {
+        console.error(
+            '❌ /reset error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Reset failed. Please try again.'
+        );
+    }
 });
 // ==================== ADD ALIEN — CANCEL ====================
 
