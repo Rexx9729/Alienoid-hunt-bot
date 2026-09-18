@@ -78,6 +78,27 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
 },
+        // ==================== BOT STATS TRACKING ====================
+    lastActivityAt: {
+        type: Date,
+        default: null
+    },
+
+    totalEarned: {
+        type: Number,
+        default: 0
+    },
+
+    earningHistory: [{
+        amount: {
+            type: Number,
+            default: 0
+        },
+        earnedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
         referredBy: {
         type: Number,
         default: null
@@ -403,6 +424,77 @@ bot.use(async (ctx, next) => {
 });
 
 // ==================== END GLOBAL CALLBACK GUARD ====================
+// ==================== RUPEES EARNING TRACKER ====================
+
+async function recordEarning(user, amount) {
+
+    const value = Number(amount || 0);
+
+    if (!user || value <= 0) {
+        return;
+    }
+
+    const now = new Date();
+
+    user.totalEarned =
+        Number(user.totalEarned || 0) + value;
+
+    user.earningHistory.push({
+        amount: value,
+        earnedAt: now
+    });
+
+    // Keep only recent 31 days of earning records
+    const cutoff =
+        new Date(
+            now.getTime() -
+            (31 * 24 * 60 * 60 * 1000)
+        );
+
+    user.earningHistory =
+        user.earningHistory.filter(
+            entry =>
+                new Date(entry.earnedAt) >= cutoff
+        );
+}
+
+// ==================== END RUPEES EARNING TRACKER ====================
+// ==================== TRACK USER ACTIVITY ====================
+
+bot.use(async (ctx, next) => {
+
+    try {
+
+        const userId = ctx.from?.id;
+
+        if (userId) {
+
+            await User.updateOne(
+                {
+                    userId
+                },
+                {
+                    $set: {
+                        lastActivityAt: new Date()
+                    }
+                }
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            '❌ Activity tracking error:',
+            error
+        );
+
+    }
+
+    return next();
+});
+
+// ==================== END USER ACTIVITY TRACKING ====================
 // ==================== AUTO SAVE GROUP ====================
 
 bot.on('my_chat_member', async (ctx) => {
@@ -5089,6 +5181,10 @@ bot.command('daily', async (ctx) => {
 
         // Give ₹500 daily bonus
         user.rupees += 500;
+        await recordEarning(
+    user,
+    500
+);
         user.lastDailyClaim = now;
 
         await user.save();
@@ -5164,6 +5260,10 @@ bot.command("explore", async (ctx) => {
             Math.floor(Math.random() * 31) + 50; // ₹50–₹80
 
         user.rupees += reward;
+        await recordEarning(
+    user,
+    reward
+);
         await user.save();
 
         exploreCooldowns.set(userId, now);
@@ -7161,7 +7261,7 @@ Selected before the battle starts.
 🔍 NORMAL SCAN — 
 Used to capture Basic, Common and Rare aliens.
 
-⚡ SUPER SCAN — ₹1,000
+⚡ SUPER SCAN — 
 A powerful scan with better chances against higher rarities.
 
 ☣️ MEGA SCAN — 
@@ -7436,41 +7536,278 @@ bot.launch()
     });
 // ==================== /BOTSTATS ====================
 
+// ==================== /BOTSTATS ====================
+
 bot.command('botstats', async (ctx) => {
+
     try {
+
         if (ctx.from.id !== OWNER_ID) {
-            return ctx.reply('❌ Owner only command.');
+            return ctx.reply(
+                '❌ Owner only command.'
+            );
         }
 
-        const totalUsers = await User.countDocuments();
+        const now = new Date();
 
-        const totalAliens = await Alien.countDocuments();
+        // ==================== USER COUNTS ====================
 
-        const uptimeSeconds = Math.floor(process.uptime());
+        const totalUsers =
+            await User.countDocuments();
 
-        const days = Math.floor(uptimeSeconds / 86400);
-        const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        const dailySince =
+            new Date(
+                now.getTime() -
+                (24 * 60 * 60 * 1000)
+            );
+
+        const weeklySince =
+            new Date(
+                now.getTime() -
+                (7 * 24 * 60 * 60 * 1000)
+            );
+
+        const monthlySince =
+            new Date(
+                now.getTime() -
+                (30 * 24 * 60 * 60 * 1000)
+            );
+
+        const activeNowSince =
+            new Date(
+                now.getTime() -
+                (5 * 60 * 1000)
+            );
+
+        const dailyActiveUsers =
+            await User.countDocuments({
+                lastActivityAt: {
+                    $gte: dailySince
+                }
+            });
+
+        const weeklyActiveUsers =
+            await User.countDocuments({
+                lastActivityAt: {
+                    $gte: weeklySince
+                }
+            });
+
+        const monthlyActiveUsers =
+            await User.countDocuments({
+                lastActivityAt: {
+                    $gte: monthlySince
+                }
+            });
+
+        const activeNowUsers =
+            await User.countDocuments({
+                lastActivityAt: {
+                    $gte: activeNowSince
+                }
+            });
+
+        // ==================== GROUPS ====================
+
+        const totalGroups =
+            await Group.countDocuments();
+
+        // ==================== ALIEN DATABASE ====================
+
+        const totalDatabaseAliens =
+            await Alien.countDocuments();
+
+        // ==================== TOTAL COLLECTED ALIENS ====================
+
+        const alienCollectionResult =
+            await User.aggregate([
+                {
+                    $project: {
+                        alienCount: {
+                            $size: {
+                                $ifNull: [
+                                    '$aliens',
+                                    []
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: {
+                            $sum: '$alienCount'
+                        }
+                    }
+                }
+            ]);
+
+        const totalCollectedAliens =
+            Number(
+                alienCollectionResult[0]?.total || 0
+            );
+
+        // ==================== EARNING STATS ====================
+
+        const earningDailySince =
+            new Date(
+                now.getTime() -
+                (24 * 60 * 60 * 1000)
+            );
+
+        const earningWeeklySince =
+            new Date(
+                now.getTime() -
+                (7 * 24 * 60 * 60 * 1000)
+            );
+
+        const earningUsers =
+            await User.find(
+                {},
+                {
+                    earningHistory: 1
+                }
+            ).lean();
+
+        let dailyTotalEarned = 0;
+        let weeklyTotalEarned = 0;
+
+        for (const user of earningUsers) {
+
+            const history =
+                user.earningHistory || [];
+
+            for (const entry of history) {
+
+                const earnedAt =
+                    new Date(entry.earnedAt);
+
+                const amount =
+                    Number(entry.amount || 0);
+
+                if (
+                    earnedAt >=
+                    earningDailySince
+                ) {
+                    dailyTotalEarned += amount;
+                }
+
+                if (
+                    earnedAt >=
+                    earningWeeklySince
+                ) {
+                    weeklyTotalEarned += amount;
+                }
+            }
+        }
+
+        const dailyEarningUsers =
+            await User.countDocuments({
+                earningHistory: {
+                    $elemMatch: {
+                        earnedAt: {
+                            $gte: earningDailySince
+                        },
+                        amount: {
+                            $gt: 0
+                        }
+                    }
+                }
+            });
+
+        const weeklyEarningUsers =
+            await User.countDocuments({
+                earningHistory: {
+                    $elemMatch: {
+                        earnedAt: {
+                            $gte: earningWeeklySince
+                        },
+                        amount: {
+                            $gt: 0
+                        }
+                    }
+                }
+            });
+
+        const averageDailyEarning =
+            dailyEarningUsers > 0
+                ? Math.round(
+                    dailyTotalEarned /
+                    dailyEarningUsers
+                )
+                : 0;
+
+        const averageWeeklyEarning =
+            weeklyEarningUsers > 0
+                ? Math.round(
+                    weeklyTotalEarned /
+                    weeklyEarningUsers
+                )
+                : 0;
+
+        // ==================== UPTIME ====================
+
+        const uptimeSeconds =
+            Math.floor(
+                process.uptime()
+            );
+
+        const days =
+            Math.floor(
+                uptimeSeconds / 86400
+            );
+
+        const hours =
+            Math.floor(
+                (uptimeSeconds % 86400) / 3600
+            );
+
+        const minutes =
+            Math.floor(
+                (uptimeSeconds % 3600) / 60
+            );
+
+        // ==================== MESSAGE ====================
 
         const message =
 `📊 <b>ALIENOID BOT STATS</b>
 
 👥 Total Users : ${totalUsers}
-📅 Total Monthly Users : Coming Soon
-🟢 Total Active Now Users : Coming Soon
+
+☀️ Daily Active Users : ${dailyActiveUsers}
+📆 Weekly Active Users : ${weeklyActiveUsers}
+📅 Monthly Active Users : ${monthlyActiveUsers}
+🟢 Active Now Users : ${activeNowUsers}
 
 ⏱️ Bot is live from ${days}d ${hours}h ${minutes}m
 🤖 Bot Status : Active
 
-👽 Total Database Aliens : ${totalAliens}`;
+👽 Total Database Aliens : ${totalDatabaseAliens}
+🧬 Total Aliens Collected : ${totalCollectedAliens}
 
-        return ctx.reply(message, {
-            parse_mode: 'HTML'
-        });
+💰 Avg Daily Earning/User : ₹${averageDailyEarning.toLocaleString()}
+💰 Avg Weekly Earning/User : ₹${averageWeeklyEarning.toLocaleString()}
+
+👥 Total Group Chats : ${totalGroups}`;
+
+        return ctx.reply(
+            message,
+            {
+                parse_mode: 'HTML'
+            }
+        );
 
     } catch (error) {
-        console.error('❌ /botstats error:', error);
-        return ctx.reply('❌ Could not load bot stats.');
+
+        console.error(
+            '❌ /botstats error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Could not load bot stats.'
+        );
     }
 });
 // ==================== /BROADCAST ====================
