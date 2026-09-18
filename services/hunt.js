@@ -28,6 +28,45 @@ const {
     consumeArtifact,
     applyArtifactStats
 } = require('./supportArtifacts');
+// ==================== HUNT EARNING TRACKER ====================
+
+async function recordHuntEarning(user, amount) {
+
+    const value = Number(amount || 0);
+
+    if (!user || value <= 0) {
+        return;
+    }
+
+    const now = new Date();
+
+    user.totalEarned =
+        Number(user.totalEarned || 0) + value;
+
+    if (!Array.isArray(user.earningHistory)) {
+        user.earningHistory = [];
+    }
+
+    user.earningHistory.push({
+        amount: value,
+        earnedAt: now
+    });
+
+    // Keep only recent 31 days
+    const cutoff =
+        new Date(
+            now.getTime() -
+            (31 * 24 * 60 * 60 * 1000)
+        );
+
+    user.earningHistory =
+        user.earningHistory.filter(
+            entry =>
+                new Date(entry.earnedAt) >= cutoff
+        );
+}
+
+// ==================== END HUNT EARNING TRACKER ====================
 // ==================== HUNT CONFIG ====================
 
 const MAX_DECK_SIZE = 4;
@@ -558,7 +597,10 @@ if (!Number.isFinite(reward)) {
         // Give Rupee reward
         // Give Rupee reward
 user.rupees += reward;
-
+await recordHuntEarning(
+    user,
+    reward
+);
 // ==================== PROGRESSION ====================
 
 // God encounter completed without capture → reset
@@ -1779,6 +1821,10 @@ hunt.wildAttackCount += 1;
 
 if (user) {
     user.rupees += HUNT_LOSE_REWARD;
+    await recordHuntEarning(
+        user,
+        HUNT_LOSE_REWARD
+    );
     await user.save();
 }
 
