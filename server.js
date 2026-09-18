@@ -294,6 +294,44 @@ bot.use(
     })
 );
 
+// ==================== GLOBAL BOT ERROR HANDLER ====================
+
+bot.catch(async (error, ctx) => {
+
+    console.error(
+        '❌ Telegram update error:',
+        error
+    );
+
+    try {
+
+        if (ctx?.callbackQuery) {
+            await ctx.answerCbQuery(
+                '❌ Something went wrong. Please try again.',
+                {
+                    show_alert: true
+                }
+            );
+            return;
+        }
+
+        if (ctx?.chat) {
+            await ctx.reply(
+                '❌ Something went wrong. Please try again.'
+            );
+        }
+
+    } catch (replyError) {
+
+        console.error(
+            '❌ Error while sending failure message:',
+            replyError
+        );
+
+    }
+});
+
+// ==================== END GLOBAL BOT ERROR HANDLER ====================
 // ==================== GLOBAL CALLBACK DOUBLE-TAP GUARD ====================
 
 const activeCallbacks = new Set();
@@ -2377,7 +2415,7 @@ const xp = `${levelData.currentXP.toLocaleString()} / ${levelData.nextMilestone.
  ──────────────────
 </code>`;
 
-    ctx.replyWithHTML(sanitizeTelegramText(profileMsg));
+    ctx.replyWithHTML(profileMsg);
 });
 
 bot.command(['inventory', 'items'], async (ctx) => {
@@ -5183,9 +5221,9 @@ const SHOP_ITEMS = {
 function getShopMessage(user) {
 
     return (
-`╔══════════════════╗
-       🛒 ALIENOID SHOP
-╚══════════════════╝
+`╔═══════════════╗
+    🛒 ALIENOID SHOP
+╚═══════════════╝
 
 💰 Your Balance: ₹${user.rupees.toLocaleString()}
 
@@ -7520,3 +7558,25 @@ bot.command('broadcast', async (ctx) => {
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// ==================== PROCESS ERROR PROTECTION ====================
+
+process.on('unhandledRejection', (error) => {
+
+    console.error(
+        '❌ Unhandled Promise Rejection:',
+        error
+    );
+
+});
+
+process.on('uncaughtException', (error) => {
+
+    console.error(
+        '❌ Uncaught Exception:',
+        error
+    );
+
+});
+
+// ==================== END PROCESS ERROR PROTECTION ====================
