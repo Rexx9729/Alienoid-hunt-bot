@@ -286,7 +286,7 @@ function getScanKeyboard(user, hunt) {
 
     buttons.push([
         {
-            text: '🔍 Normal Scan',
+            text: '🔍 N.Scan 1k',
             callback_data: 'hunt_scan_Normal'
         }
     ]);
@@ -628,6 +628,13 @@ function registerHunt(bot, User) {
     // ==================== /HUNT ====================
 
     bot.command('hunt', async (ctx) => {
+        // Hunt is DM-only
+    if (ctx.chat?.type !== 'private') {
+        return ctx.reply(
+            '❌ Hunt is available only in Bot DM.\n\n' +
+            '👉 Open my private chat and use /hunt there.'
+        );
+    }
 
         try {
 
