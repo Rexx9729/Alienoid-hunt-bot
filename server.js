@@ -7440,18 +7440,22 @@ bot.command('gbroadcast', async (ctx) => {
             );
         }
 
-        const text =
-            ctx.message.text
-                .replace(/^\/gbroadcast(?:@\w+)?\s*/i, '')
-                .trim();
+        const repliedMessage =
+    ctx.message.reply_to_message;
 
-        if (!text) {
-            return ctx.reply(
-                '⚠️ Broadcast message is empty.\n\n' +
-                'Use:\n' +
-                '/gbroadcast Your message here'
-            );
-        }
+const text =
+    ctx.message.text
+        .replace(/^\/gbroadcast(?:@\w+)?\s*/i, '')
+        .trim();
+
+if (!repliedMessage && !text) {
+    return ctx.reply(
+        '⚠️ Broadcast message is empty.\n\n' +
+        'Either:\n' +
+        '• Type /gbroadcast Your message here\n' +
+        '• Or reply to a post and type /gbroadcast'
+    );
+}
 
         const groups = await Group.find(
             {},
@@ -7479,10 +7483,22 @@ bot.command('gbroadcast', async (ctx) => {
 
             try {
 
-                await ctx.telegram.sendMessage(
-                    group.chatId,
-                    text
-                );
+            if (repliedMessage) {
+
+    await ctx.telegram.forwardMessage(
+        group.chatId,
+        ctx.chat.id,
+        repliedMessage.message_id
+    );
+
+} else {
+
+    await ctx.telegram.sendMessage(
+        group.chatId,
+        text
+    );
+
+            }
 
                 sent++;
 
@@ -7824,18 +7840,22 @@ bot.command('broadcast', async (ctx) => {
             );
         }
 
-        const text =
-            ctx.message.text
-                .replace(/^\/broadcast(?:@\w+)?\s*/i, '')
-                .trim();
+        const repliedMessage =
+    ctx.message.reply_to_message;
 
-        if (!text) {
-            return ctx.reply(
-                '⚠️ Broadcast message is empty.\n\n' +
-                'Use:\n' +
-                '/broadcast Your message here'
-            );
-        }
+const text =
+    ctx.message.text
+        .replace(/^\/broadcast(?:@\w+)?\s*/i, '')
+        .trim();
+
+if (!repliedMessage && !text) {
+    return ctx.reply(
+        '⚠️ Broadcast message is empty.\n\n' +
+        'Either:\n' +
+        '• Type /broadcast Your message here\n' +
+        '• Or reply to a post and type /broadcast'
+    );
+}
 
         const users =
             await User.find(
@@ -7855,10 +7875,22 @@ bot.command('broadcast', async (ctx) => {
 
             try {
 
-                await ctx.telegram.sendMessage(
-                    user.userId,
-                    text
-                );
+                if (repliedMessage) {
+
+    await ctx.telegram.forwardMessage(
+        user.userId,
+        ctx.chat.id,
+        repliedMessage.message_id
+    );
+
+} else {
+
+    await ctx.telegram.sendMessage(
+        user.userId,
+        text
+    );
+
+                }
 
                 sent++;
 
