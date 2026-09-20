@@ -71,7 +71,7 @@ async function recordHuntEarning(user, amount) {
 
 const MAX_DECK_SIZE = 4;
 const MAX_SCANS_PER_HUNT = 3;
-const NORMAL_SCAN_COST = 1000;
+const NORMAL_SCAN_COST = 200;
 
 // ==================== HELPERS ====================
 
@@ -325,7 +325,7 @@ function getScanKeyboard(user, hunt) {
 
     buttons.push([
         {
-            text: '🔍 N.Scan 1k',
+            text: '🔍 N.Scan 200rs',
             callback_data: 'hunt_scan_Normal'
         }
     ]);
