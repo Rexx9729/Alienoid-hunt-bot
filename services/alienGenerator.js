@@ -6,12 +6,12 @@
 const RARITY_STATS = {
     Basic: {
         hp: [400, 500],
-        attack: [100, 150]
+        attack: [100, 170]
     },
 
     Common: {
         hp: [500, 700],
-        attack: [150, 300]
+        attack: [120, 300]
     },
 
     Rare: {
