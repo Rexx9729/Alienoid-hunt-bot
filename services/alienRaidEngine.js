@@ -18,7 +18,41 @@ const RAID_CONFIG =
 
 const activeRaids = new Map();
 
+const raidCreationLocks = new Set();
 
+function getActiveRaidForUser(userId) {
+    const id = Number(userId);
+
+    for (const raid of activeRaids.values()) {
+        if (
+            raid.status === 'active' &&
+            raid.players.has(id)
+        ) {
+            return raid;
+        }
+    }
+
+    return null;
+}
+
+function expireRaidIfInactive(raid) {
+    if (!raid || raid.status !== 'active') {
+        return false;
+    }
+
+    const inactiveFor =
+        Date.now() - Number(raid.updatedAt || raid.createdAt || Date.now());
+
+    if (inactiveFor < 10 * 60 * 1000) {
+        return false;
+    }
+
+    raid.status = 'expired';
+
+    activeRaids.delete(raid.raidId);
+
+    return true;
+}
 // ==================== HELPERS ====================
 
 function randomNumber(min, max) {
@@ -351,6 +385,10 @@ async function createRaidPlayer(user) {
         dodging: false,
 
         defeated: false,
+        deathCount: 0,
+
+reviveAt: 0,
+        
         raidEntryPaid: false,
 
         joinedAt:
@@ -360,7 +398,82 @@ async function createRaidPlayer(user) {
     };
 }
 
+function markPlayerDefeated(
+    raid,
+    player
+) {
+    player.currentHp = 0;
+    player.defeated = true;
 
+    player.deathCount =
+        Number(player.deathCount || 0) + 1;
+
+    if (player.deathCount === 1) {
+
+        player.reviveAt =
+            Date.now() + 59000;
+
+        setTimeout(() => {
+
+            const currentRaid =
+                getRaid(raid.raidId);
+
+            const currentPlayer =
+                currentRaid?.players.get(
+                    Number(player.userId)
+                );
+
+            if (
+                currentRaid &&
+                currentPlayer &&
+                currentPlayer.deathCount === 1 &&
+                currentPlayer.defeated &&
+                Date.now() >=
+                    Number(currentPlayer.reviveAt || 0)
+            ) {
+
+                currentPlayer.currentHp =
+                    Math.max(
+                        1,
+                        Number(
+                            currentPlayer.maxHp || 1
+                        )
+                    );
+
+                currentPlayer.defeated = false;
+                currentPlayer.reviveAt = 0;
+
+                currentRaid.updatedAt =
+                    Date.now();
+            }
+
+        }, 59000);
+
+    } else {
+
+        player.reviveAt = 0;
+    }
+}
+
+function getDeathCooldownSeconds(player) {
+
+    if (
+        !player ||
+        Number(player.deathCount || 0) !== 1 ||
+        !player.defeated
+    ) {
+        return 0;
+    }
+
+    const remaining =
+        Number(player.reviveAt || 0) -
+        Date.now();
+
+    return Math.max(
+        0,
+        Math.ceil(remaining / 1000)
+    );
+}
 // ==================== CREATE RAID ====================
 
 async function createRaid({
@@ -368,7 +481,25 @@ async function createRaid({
     difficulty,
     mode
 }) {
+    const userId = Number(user.userId);
 
+    if (raidCreationLocks.has(userId)) {
+        throw new Error(
+            'You are already starting a raid. Please wait.'
+        );
+    }
+
+    const existingRaid =
+        getActiveRaidForUser(userId);
+
+    if (existingRaid) {
+        throw new Error(
+            '⚠️ You are already in an ongoing raid.'
+        );
+    }
+
+    raidCreationLocks.add(userId);
+    
     const difficultyKey =
         String(difficulty || '')
             .toUpperCase();
@@ -493,6 +624,8 @@ async function createRaid({
         raid
     );
 
+        raidCreationLocks.delete(userId);
+
     return raid;
 }
 
@@ -574,10 +707,24 @@ async function joinRaid({
         };
 
     }
+    const cost =
+        Number(raid.cost || 0);
 
+    if (
+        Number(user.rupees || 0) < cost
+    ) {
+        return {
+            ok: false,
+            reason: 'insufficient_funds'
+        };
+    }
+
+    user.rupees -= cost;
+
+    await user.save();
     const player =
         await createRaidPlayer(user);
-
+player.raidEntryPaid = true;
     raid.players.set(
         player.userId,
         player
@@ -677,12 +824,20 @@ async function playerAttack({
 
     if (player.defeated) {
 
-        return {
-            ok: false,
-            reason: 'defeated'
-        };
+    const cooldown =
+        getDeathCooldownSeconds(player);
 
-    }
+    return {
+        ok: false,
+        reason:
+            cooldown > 0
+                ? 'death_cooldown'
+                : 'defeated',
+        seconds:
+            cooldown
+    };
+
+}
 
     if (
         raid.processing
@@ -799,12 +954,10 @@ async function playerAttack({
             player.currentHp <= 0
         ) {
 
-            player.currentHp =
-                0;
-
-            player.defeated =
-                true;
-
+            markPlayerDefeated(
+                raid,
+                player
+            );
         }
 
         return {
@@ -1022,12 +1175,20 @@ async function playerGuard({
 
     if (player.defeated) {
 
-        return {
-            ok: false,
-            reason: 'defeated'
-        };
+    const cooldown =
+        getDeathCooldownSeconds(player);
 
-    }
+    return {
+        ok: false,
+        reason:
+            cooldown > 0
+                ? 'death_cooldown'
+                : 'defeated',
+        seconds:
+            cooldown
+    };
+
+}
 
     if (
         raid.processing
@@ -1059,10 +1220,10 @@ async function playerGuard({
     player.currentHp <= 0
 ) {
 
-    player.currentHp = 0;
-
-    player.defeated = true;
-
+    markPlayerDefeated(
+                raid,
+                player
+            );
         }
 
         return {
@@ -1136,14 +1297,22 @@ async function playerDodge({
 
     }
 
-    if (player.defeated) {
+        if (player.defeated) {
+
+        const cooldown =
+            getDeathCooldownSeconds(player);
 
         return {
             ok: false,
-            reason: 'defeated'
+            reason:
+                cooldown > 0
+                    ? 'death_cooldown'
+                    : 'defeated',
+            seconds:
+                cooldown
         };
 
-    }
+        }
 
     if (
         raid.processing
@@ -1245,10 +1414,18 @@ async function playerHealerX({
 
     if (player.defeated) {
 
-        return {
-            ok: false,
-            reason: 'defeated'
-        };
+    const cooldown =
+        getDeathCooldownSeconds(player);
+
+    return {
+        ok: false,
+        reason:
+            cooldown > 0
+                ? 'death_cooldown'
+                : 'defeated',
+        seconds:
+            cooldown
+    };
 
     }
 
@@ -1322,6 +1499,16 @@ async function resetRaidForUser({
 }) {
 
     const raid =
+            if (
+        raid &&
+        expireRaidIfInactive(raid)
+    ) {
+        return {
+            ok: false,
+            reason: 'expired',
+            refunded: 0
+        };
+    }
         getRaid(raidId);
 
     if (!raid) {
@@ -1451,6 +1638,17 @@ function runFromRaid({
     raid.updatedAt =
         Date.now();
 
+    const playersRemaining =
+        raid.players.size;
+
+    if (
+        playersRemaining === 0
+    ) {
+        removeRaid(
+            raid.raidId
+        );
+    }
+
     return {
 
         ok: true,
@@ -1459,6 +1657,8 @@ function runFromRaid({
             'run',
 
         player,
+
+        playersRemaining,
 
         raid
 
@@ -1980,6 +2180,10 @@ function removeRaid(raidId) {
 module.exports = {
 
     activeRaids,
+
+        getActiveRaidForUser,
+
+    expireRaidIfInactive,
 
     createRaid,
 
