@@ -1987,6 +1987,8 @@ module.exports = {
 
     joinRaid,
 
+    resetRaidForUser,
+
     playerAttack,
 
     playerGuard,
