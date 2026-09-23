@@ -351,6 +351,7 @@ async function createRaidPlayer(user) {
         dodging: false,
 
         defeated: false,
+        raidEntryPaid: false,
 
         joinedAt:
             Date.now(),
@@ -433,6 +434,7 @@ async function createRaid({
 
     // Deduct entry cost
     user.rupees -= cost;
+    player.raidEntryPaid = true;
 
     await user.save();
 
@@ -1053,6 +1055,15 @@ async function playerGuard({
                 raid,
                 player
             );
+        if (
+    player.currentHp <= 0
+) {
+
+    player.currentHp = 0;
+
+    player.defeated = true;
+
+        }
 
         return {
 
@@ -1276,6 +1287,7 @@ async function playerHealerX({
         1;
 
     await user.save();
+    raid.updatedAt = Date.now();
 
     // IMPORTANT:
     // HealerX DOES NOT consume an action.
@@ -1301,7 +1313,104 @@ async function playerHealerX({
     };
 }
 
+// ==================== RESET RAID ====================
 
+async function resetRaidForUser({
+    raidId,
+    userId,
+    User
+}) {
+
+    const raid =
+        getRaid(raidId);
+
+    if (!raid) {
+
+        return {
+            ok: false,
+            reason: 'not_found',
+            refunded: 0
+        };
+
+    }
+
+    const player =
+        raid.players.get(
+            Number(userId)
+        );
+
+    if (!player) {
+
+        return {
+            ok: false,
+            reason: 'not_participant',
+            refunded: 0
+        };
+
+    }
+
+    let refunded = 0;
+
+    // Refund ONLY the entry fee
+    // actually paid by this player.
+    if (player.raidEntryPaid) {
+
+        refunded =
+            Number(
+                raid.cost || 0
+            );
+
+        if (refunded > 0) {
+
+            const user =
+                await User.findOne({
+                    userId:
+                        Number(userId)
+                });
+
+            if (user) {
+
+                user.rupees +=
+                    refunded;
+
+                await user.save();
+
+            }
+
+        }
+
+        player.raidEntryPaid = false;
+
+    }
+
+    // Remove only this player.
+    raid.players.delete(
+        Number(userId)
+    );
+
+    raid.updatedAt =
+        Date.now();
+
+    // If nobody remains,
+    // completely remove the raid.
+    if (
+        raid.players.size === 0
+    ) {
+
+        removeRaid(
+            raid.raidId
+        );
+
+    }
+
+    return {
+
+        ok: true,
+
+        refunded
+
+    };
+}
 // ==================== RUN ====================
 
 function runFromRaid({
