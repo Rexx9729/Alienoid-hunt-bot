@@ -6193,6 +6193,176 @@ bot.command('rpay', async (ctx) => {
     }
 });
 
+// ==================== OWNER GIFT ALIEN ====================
+
+bot.command('giftalien', async (ctx) => {
+
+    try {
+
+        // OWNER ONLY
+        if (Number(ctx.from.id) !== Number(OWNER_ID)) {
+            return ctx.reply(
+                '❌ This command is owner only.'
+            );
+        }
+
+        // Must reply to target player
+        if (!ctx.message.reply_to_message) {
+            return ctx.reply(
+                '⚠️ Reply to a player message and use:\n\n' +
+                '/giftalien <alien name>\n\n' +
+                'Example:\n' +
+                '/giftalien Heatblast'
+            );
+        }
+
+        const receiverId =
+            Number(
+                ctx.message.reply_to_message.from.id
+            );
+
+        // Prevent gifting to bots
+        if (
+            ctx.message.reply_to_message.from.is_bot
+        ) {
+            return ctx.reply(
+                '❌ You cannot gift an alien to a bot.'
+            );
+        }
+
+        // Get alien name
+        const args =
+            ctx.message.text
+                .trim()
+                .split(/\s+/);
+
+        const alienName =
+            args
+                .slice(1)
+                .join(' ')
+                .trim();
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Enter the alien name.\n\n' +
+                'Example:\n' +
+                '/giftalien Heatblast'
+            );
+        }
+
+        // Find receiver
+        const receiver =
+            await User.findOne({
+                userId: receiverId
+            });
+
+        if (!receiver) {
+            return ctx.reply(
+                '❌ This player has not started Alienoid Hunt yet.'
+            );
+        }
+
+        // Find alien directly from DATABASE
+        const safeName =
+            String(alienName)
+                .replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    '\\$&'
+                );
+
+        const alien =
+            await Alien.findOne({
+                name: {
+                    $regex:
+                        `^${safeName}$`,
+                    $options: 'i'
+                }
+            });
+
+        if (!alien) {
+            return ctx.reply(
+                `❌ Alien "${alienName}" was not found in the database.`
+            );
+        }
+
+        // Create fresh unique alien instance
+        const giftedAlien = {
+
+            alienId:
+                new mongoose.Types.ObjectId().toString(),
+
+            name:
+                alien.name,
+
+            nickname:
+                alien.name,
+
+            rarity:
+                alien.rarity,
+
+            star: 0,
+
+            level: 1,
+
+            hp:
+                alien.hp,
+
+            maxHp:
+                alien.maxHp,
+
+            atk:
+                alien.atk,
+
+            def:
+                alien.def,
+
+            speed:
+                alien.speed || 0,
+
+            element:
+                alien.element,
+
+            fileId:
+                alien.fileId || ''
+        };
+
+        // Add to receiver bag
+        receiver.aliens.push(
+            giftedAlien
+        );
+
+        await receiver.save();
+
+        const receiverName =
+            receiver.username ||
+            ctx.message.reply_to_message
+                .from.first_name ||
+            'Hunter';
+
+        return ctx.reply(
+            `🎁 <b>ALIEN GIFTED</b>\n\n` +
+            `👽 ${giftedAlien.name}\n` +
+            `⭐ ${giftedAlien.rarity}\n` +
+            `👤 ${receiverName}\n\n` +
+            `✅ Added directly from Alien Database.`,
+            {
+                parse_mode: 'HTML'
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            'GiftAlien command error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Failed to gift alien. Please try again.'
+        );
+    }
+
+});
 // ==================== ALIEN GIFT ====================
 
 bot.command('agive', async (ctx) => {
