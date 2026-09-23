@@ -22,7 +22,7 @@ const { registerHunt } = require('./services/hunt');
 const { registerFight, resetFightForUser } = require('./services/fight');
 const { registerAlienRaid } = require('./services/alienRaid');
 const {
-    resetRaidForUser
+    resetRaidForUser, getActiveRaidForUser
 } = require('./services/alienRaidEngine');
 const exploreCooldowns = new Map();
 // Express Keep-Alive Server
@@ -1007,11 +1007,23 @@ bot.command('reset', async (ctx) => {
         // RESET RAID
         // ====================
 
-        const raidResult =
-            await resetRaidForUser(
-                userId,
-                User
-            );
+        const activeRaid =
+    getActiveRaidForUser(
+        userId
+    );
+
+const raidResult =
+    activeRaid
+        ? await resetRaidForUser({
+            raidId:
+                activeRaid.raidId,
+            userId,
+            User
+        })
+        : {
+            ok: false,
+            refunded: 0
+        };
 
         const raidRefund =
             Number(
