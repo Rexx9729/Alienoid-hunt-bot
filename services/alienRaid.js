@@ -3,6 +3,7 @@
 const {
     createRaid,
     getRaid,
+    getActiveRaidForUser,
     joinRaid,
     playerAttack,
     playerGuard,
@@ -976,7 +977,8 @@ function allPlayersDefeated(
 
     return players.every(
         player =>
-            player.defeated
+            player.defeated &&
+        Number(player.deathCount || 0) >= 2
     );
 }
 
@@ -1001,6 +1003,18 @@ function registerAlienRaid(
                         userId:
                             ctx.from.id
                     });
+                const activeRaid =
+    getActiveRaidForUser(
+        ctx.from.id
+    );
+
+if (activeRaid) {
+
+    return ctx.reply(
+        '⚠️ You are already in an ongoing raid.'
+    );
+
+}
 
                 if (!user) {
 
@@ -1164,7 +1178,7 @@ EXTREME - ₹1600`,
 
             try {
 
-                await ctx.answerCbQuery();
+        
 
                 const mode =
                     ctx.match[1];
@@ -1188,9 +1202,12 @@ EXTREME - ₹1600`,
 
                 if (!user.raidAlien) {
 
-                    return ctx.reply(
-                        '❌ Your Raid Alien is not set.'
-                    );
+                    return ctx.answerCbQuery(
+        '❌ Set a Raid Alien first. Use /setraidAlien alienname',
+        {
+            show_alert: true
+        }
+    );
 
                 }
 
@@ -1342,7 +1359,12 @@ EXTREME - ₹1600`,
                             '⚠️ You are already a part of this raid.',
 
                         full:
-                            "❌ You can't join this raid. The size is already full."
+                            "❌ You can't join this raid. The size is already full.",
+                        insufficient_funds:
+    `❌ You don't have enough Rupees to join this raid.`,
+
+already_active_raid:
+    '⚠️ You are already in an ongoing raid.'
 
                     };
 
@@ -1483,14 +1505,34 @@ EXTREME - ₹1600`,
 
         if (player.defeated) {
 
-            return ctx.answerCbQuery(
-                '💀 You have been defeated.',
-                {
-                    show_alert:
-                        true
-                }
-            );
+    const remaining =
+        Math.max(
+            0,
+            Math.ceil(
+                (
+                    Number(player.reviveAt || 0) -
+                    Date.now()
+                ) / 1000
+            )
+        );
 
+    if (remaining > 0) {
+
+        return ctx.answerCbQuery(
+            `⏳ Wait - cooldown time: ${remaining}s`,
+            {
+                show_alert: true
+            }
+        );
+
+    }
+
+    return ctx.answerCbQuery(
+        "💀 You are dead bruh! You can't do any action.",
+        {
+            show_alert: true
+        }
+    );
         }
 
         const uiKey =
@@ -1598,8 +1640,11 @@ EXTREME - ₹1600`,
                     processing:
                         '⏳ Another player is already making a move.',
 
-                    defeated:
-                        '💀 You have been defeated.',
+                    death_cooldown:
+    '⏳ Wait - cooldown time.',
+
+defeated:
+    "💀 You are dead bruh! You can't do any action.",
 
                     not_participant:
                         '❌ You are not a part of this raid.',
@@ -1904,12 +1949,37 @@ EXTREME - ₹1600`,
                 if (!updatedRaid) {
                     return;
                 }
+                if (
+    updatedRaid.players.size === 0
+) {
+
+    await ctx.telegram.editMessageCaption(
+        raid.chatId,
+        raid.messageId,
+        undefined,
+        '🏃 <b>YOU RAN AWAY</b>\n\n' +
+        'You ran out from this raid. ' +
+        "You won't get any reward.",
+        {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: []
+            }
+        }
+    );
+
+    removeRaid(raidId);
+
+    return;
+                }
 
                 // If solo player runs,
                 // raid ends with 0 reward.
                 if (
                     updatedRaid.mode ===
                     'SOLO'
+                    ||
+    updatedRaid.players.size === 0
                 ) {
 
                     updatedRaid.status =
