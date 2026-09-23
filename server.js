@@ -724,6 +724,7 @@ function buildRichestMessage(
 }
 registerHunt(bot, User);
 registerFight(bot, User);
+registerAlienRaid(bot, User);
 // ==================== ADD ALIEN SESSION CONTROL ====================
 
 const ADD_ALIEN_TIMEOUT = 2 * 60 * 1000; // 2 minutes
