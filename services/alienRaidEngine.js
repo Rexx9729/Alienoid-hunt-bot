@@ -498,7 +498,7 @@ async function createRaid({
         );
     }
 
-    raidCreationLocks.add(userId);
+
     
     const difficultyKey =
         String(difficulty || '')
@@ -540,6 +540,7 @@ async function createRaid({
             `Level ${RAID_CONFIG.LEVEL_REQUIREMENTS[difficultyKey]} required.`
         );
     }
+    raidCreationLocks.add(userId);
 
     const player =
         await createRaidPlayer(user);
