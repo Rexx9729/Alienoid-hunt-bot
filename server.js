@@ -74,6 +74,10 @@ const userSchema = new mongoose.Schema({
 },
     duels: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
+    raidXp: {
+    type: Number,
+    default: 0
+},
     lastDailyClaim: {
     type: Date,
     default: null
@@ -174,8 +178,13 @@ const XP_INCREASE_PER_LEVEL = 300;
 function getTotalXP(user) {
     const hunts = Number(user.hunts || 0);
     const duels = Number(user.duels || 0);
+    const raidXp = Number(user.raidXp || 0);
 
-    return (hunts * HUNT_XP) + (duels * DUEL_XP);
+    return (
+        (hunts * HUNT_XP) +
+        (duels * DUEL_XP) +
+        raidXp
+    );
 }
 
 function getLevelData(user) {
