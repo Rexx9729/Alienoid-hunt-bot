@@ -1428,6 +1428,29 @@ EXTREME - ₹1600`,
 
         const raid =
             getRaid(raidId);
+        if (
+    raid &&
+    Date.now() -
+    Number(raid.updatedAt || raid.createdAt || 0)
+    >=
+    10 * 60 * 1000
+) {
+
+    raid.status =
+        'expired';
+
+    removeRaid(
+        raidId
+    );
+
+    return ctx.answerCbQuery(
+        '⏰ This raid expired due to 10 minutes of inactivity.',
+        {
+            show_alert: true
+        }
+    );
+
+        }
 
         if (!raid) {
 
