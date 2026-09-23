@@ -6194,22 +6194,29 @@ bot.command('rpay', async (ctx) => {
 });
 
 // ==================== OWNER GIFT ALIEN ====================
+// ==================== /GIFTALIEN ====================
 
 bot.command('giftalien', async (ctx) => {
 
     try {
 
+        // ====================
         // OWNER ONLY
-        if (Number(ctx.from.id) !== Number(OWNER_ID)) {
+        // ====================
+
+        if (ctx.from.id !== OWNER_ID) {
             return ctx.reply(
-                '❌ This command is owner only.'
+                '❌ Owner only command.'
             );
         }
 
-        // Must reply to target player
+        // ====================
+        // MUST REPLY TO USER
+        // ====================
+
         if (!ctx.message.reply_to_message) {
             return ctx.reply(
-                '⚠️ Reply to a player message and use:\n\n' +
+                '⚠️ Reply to the player and use:\n\n' +
                 '/giftalien <alien name>\n\n' +
                 'Example:\n' +
                 '/giftalien Heatblast'
@@ -6221,36 +6228,31 @@ bot.command('giftalien', async (ctx) => {
                 ctx.message.reply_to_message.from.id
             );
 
-        // Prevent gifting to bots
-        if (
-            ctx.message.reply_to_message.from.is_bot
-        ) {
-            return ctx.reply(
-                '❌ You cannot gift an alien to a bot.'
-            );
-        }
+        // ====================
+        // GET ALIEN NAME
+        // ====================
 
-        // Get alien name
-        const args =
+        const input =
             ctx.message.text
                 .trim()
-                .split(/\s+/);
-
-        const alienName =
-            args
-                .slice(1)
-                .join(' ')
+                .replace(
+                    /^\/giftalien(?:@\w+)?\s*/i,
+                    ''
+                )
                 .trim();
 
-        if (!alienName) {
+        if (!input) {
             return ctx.reply(
-                '⚠️ Enter the alien name.\n\n' +
+                '⚠️ Enter alien name.\n\n' +
                 'Example:\n' +
                 '/giftalien Heatblast'
             );
         }
 
-        // Find receiver
+        // ====================
+        // FIND USER
+        // ====================
+
         const receiver =
             await User.findOne({
                 userId: receiverId
@@ -6262,32 +6264,43 @@ bot.command('giftalien', async (ctx) => {
             );
         }
 
-        // Find alien directly from DATABASE
-        const safeName =
-            String(alienName)
-                .replace(
-                    /[.*+?^${}()|[\]\\]/g,
-                    '\\$&'
-                );
+        // ====================
+        // FIND EXACT ALIEN
+        // FROM SAME ALIEN DATABASE
+        // USED BY HUNT
+        // ====================
 
         const alien =
             await Alien.findOne({
                 name: {
                     $regex:
-                        `^${safeName}$`,
+                        `^${input.replace(
+                            /[.*+?^${}()|[\]\\]/g,
+                            '\\$&'
+                        )}$`,
                     $options: 'i'
                 }
             });
 
         if (!alien) {
             return ctx.reply(
-                `❌ Alien "${alienName}" was not found in the database.`
+                `❌ Alien "${input}" was not found in the Alienoid database.`
             );
         }
 
-        // Create fresh unique alien instance
+        // ====================
+        // DIRECT DATABASE COPY
+        // ====================
+        // No random stats.
+        // No generated stats.
+        // No rarity-based stats.
+        // Values come directly
+        // from Alien database.
+
         const giftedAlien = {
 
+            // Unique player-instance ID
+            // Required for user's deck/list.
             alienId:
                 new mongoose.Types.ObjectId().toString(),
 
@@ -6302,49 +6315,55 @@ bot.command('giftalien', async (ctx) => {
 
             star: 0,
 
-            level: 1,
-
             hp:
-                alien.hp,
+                Number(alien.maxHp),
 
             maxHp:
-                alien.maxHp,
+                Number(alien.maxHp),
 
             atk:
-                alien.atk,
+                Number(alien.baseAttack),
 
             def:
-                alien.def,
+                Number(alien.defense),
 
             speed:
-                alien.speed || 0,
+                Number(alien.speed),
 
             element:
                 alien.element,
 
             fileId:
-                alien.fileId || ''
+                alien.imageFileId
         };
 
-        // Add to receiver bag
+        // ====================
+        // ADD TO USER
+        // ====================
+
         receiver.aliens.push(
             giftedAlien
         );
 
         await receiver.save();
 
-        const receiverName =
-            receiver.username ||
-            ctx.message.reply_to_message
-                .from.first_name ||
-            'Hunter';
+        // ====================
+        // SUCCESS
+        // ====================
 
         return ctx.reply(
-            `🎁 <b>ALIEN GIFTED</b>\n\n` +
-            `👽 ${giftedAlien.name}\n` +
-            `⭐ ${giftedAlien.rarity}\n` +
-            `👤 ${receiverName}\n\n` +
-            `✅ Added directly from Alien Database.`,
+            `✅ <b>ALIEN GIFTED</b>\n\n` +
+
+            `👽 <b>${alien.name}</b>\n` +
+            `⭐ Rarity: ${alien.rarity}\n` +
+            `🌌 Element: ${alien.element}\n\n` +
+
+            `❤️ HP: ${alien.maxHp}\n` +
+            `⚔️ Base Attack: ${alien.baseAttack}\n` +
+            `🛡️ Defense: ${alien.defense}\n` +
+            `⚡ Speed: ${alien.speed}\n\n` +
+
+            `🎁 Added directly from Alienoid Database.`,
             {
                 parse_mode: 'HTML'
             }
@@ -6353,16 +6372,17 @@ bot.command('giftalien', async (ctx) => {
     } catch (error) {
 
         console.error(
-            'GiftAlien command error:',
+            '❌ /giftalien error:',
             error
         );
 
         return ctx.reply(
-            '❌ Failed to gift alien. Please try again.'
+            '❌ Failed to gift alien.'
         );
     }
-
 });
+
+
 // ==================== ALIEN GIFT ====================
 
 bot.command('agive', async (ctx) => {
