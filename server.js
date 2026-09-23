@@ -128,6 +128,21 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: []
         },
+    raidAlien: {
+    alienId: { type: String, default: null },
+    name: { type: String, default: null },
+    nickname: { type: String, default: null },
+    rarity: { type: String, default: null },
+    star: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    hp: { type: Number, default: null },
+    maxHp: { type: Number, default: null },
+    atk: { type: Number, default: null },
+    def: { type: Number, default: null },
+    speed: { type: Number, default: 0 },
+    element: { type: String, default: null },
+    fileId: { type: String, default: '' }
+},
     aliens: [{
         alienId: String,
         name: String,
@@ -4412,6 +4427,476 @@ bot.command('out', async (ctx) => {
 
         return ctx.reply(
             '❌ Something went wrong while removing your alien.'
+        );
+    }
+});
+// ==================== RAID ALIEN — SET ====================
+//
+// /setraidAlien alienname
+// /setraidAlien alienname 1s
+// /setraidAlien alienname 2s
+// /setraidAlien alienname 3s
+//
+
+bot.command('setraidAlien', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({
+            userId
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (
+            !user.aliens ||
+            user.aliens.length === 0
+        ) {
+            return ctx.reply(
+                '🎒 Your alien bag is empty!'
+            );
+        }
+
+        const input = ctx.message.text
+            .trim()
+            .replace(
+                /^\/setraidAlien(?:@\w+)?\s*/i,
+                ''
+            );
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/setraidAlien Atomix\n' +
+                '/setraidAlien Atomix 1s\n' +
+                '/setraidAlien Atomix 2s\n' +
+                '/setraidAlien Atomix 3s'
+            );
+        }
+
+        // ====================
+        // STAR SELECTOR
+        // ====================
+
+        let star = 0;
+        let alienName = input;
+
+        const starMatch =
+            input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+
+            star =
+                Number(
+                    starMatch[1].charAt(0)
+                );
+
+            alienName =
+                input
+                    .replace(
+                        /\s+[123]s$/i,
+                        ''
+                    )
+                    .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // ====================
+        // FIND ALIEN
+        // NAME / NICKNAME + STAR
+        // ====================
+
+        const alien =
+            user.aliens.find(a => {
+
+                const nameMatch =
+                    String(
+                        a.name || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                const nicknameMatch =
+                    String(
+                        a.nickname || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                return (
+                    (nameMatch || nicknameMatch) &&
+                    Number(a.star || 0) === star
+                );
+            });
+
+        if (!alien) {
+
+            const stars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} was not found in your bag.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        // ====================
+        // ALIEN ID CHECK
+        // ====================
+
+        if (!alien.alienId) {
+            return ctx.reply(
+                '❌ This alien is missing its Alien ID.'
+            );
+        }
+
+        // ====================
+        // SAVE RAID ALIEN
+        // ====================
+
+        user.raidAlien = {
+            alienId: String(alien.alienId),
+            name: alien.name || '',
+            nickname: alien.nickname || '',
+            rarity: alien.rarity || '',
+            star: Number(alien.star || 0),
+            level: Number(alien.level || 1),
+            hp: Number(alien.hp || alien.maxHp || 1),
+            maxHp: Number(alien.maxHp || alien.hp || 1),
+            atk: Number(alien.atk || 0),
+            def: Number(alien.def || 0),
+            speed: Number(alien.speed || 0),
+            element: alien.element || '',
+            fileId: alien.fileId || ''
+        };
+
+        await user.save();
+
+        const stars =
+            Number(alien.star || 0) > 0
+                ? `${'⭐'.repeat(alien.star)} `
+                : '';
+
+        return ctx.reply(
+            `✅ RAID ALIEN SET!\n\n` +
+            `${stars}${alien.nickname || alien.name}\n` +
+            `⭐ Rarity: ${alien.rarity}\n` +
+            `🌌 Element: ${alien.element}\n\n` +
+            `🛡️ This alien will now be used in Alien Raid.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /setraidAlien error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while setting your Raid Alien.'
+        );
+    }
+});
+// ==================== RAID ALIEN — CHANGE ====================
+//
+// /changeraidAlien alienname
+// /changeraidAlien alienname 1s
+// /changeraidAlien alienname 2s
+// /changeraidAlien alienname 3s
+//
+
+bot.command('changeraidAlien', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({
+            userId
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        if (
+            !user.aliens ||
+            user.aliens.length === 0
+        ) {
+            return ctx.reply(
+                '🎒 Your alien bag is empty!'
+            );
+        }
+
+        if (!user.raidAlien) {
+            return ctx.reply(
+                '❌ You have not set a Raid Alien yet.\n\n' +
+                'Use /setraidAlien first.'
+            );
+        }
+
+        const input = ctx.message.text
+            .trim()
+            .replace(
+                /^\/changeraidAlien(?:@\w+)?\s*/i,
+                ''
+            );
+
+        if (!input) {
+            return ctx.reply(
+                '⚠️ Enter an alien name.\n\n' +
+                'Examples:\n' +
+                '/changeraidAlien Atomix\n' +
+                '/changeraidAlien Atomix 1s\n' +
+                '/changeraidAlien Atomix 2s\n' +
+                '/changeraidAlien Atomix 3s'
+            );
+        }
+
+        // ====================
+        // STAR SELECTOR
+        // ====================
+
+        let star = 0;
+        let alienName = input;
+
+        const starMatch =
+            input.match(/\s+([123]s)$/i);
+
+        if (starMatch) {
+
+            star =
+                Number(
+                    starMatch[1].charAt(0)
+                );
+
+            alienName =
+                input
+                    .replace(
+                        /\s+[123]s$/i,
+                        ''
+                    )
+                    .trim();
+        }
+
+        if (!alienName) {
+            return ctx.reply(
+                '⚠️ Please enter a valid alien name.'
+            );
+        }
+
+        // ====================
+        // FIND NEW ALIEN
+        // ====================
+
+        const alien =
+            user.aliens.find(a => {
+
+                const nameMatch =
+                    String(
+                        a.name || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                const nicknameMatch =
+                    String(
+                        a.nickname || ''
+                    ).toLowerCase() ===
+                    alienName.toLowerCase();
+
+                return (
+                    (nameMatch || nicknameMatch) &&
+                    Number(a.star || 0) === star
+                );
+            });
+
+        if (!alien) {
+
+            const stars =
+                star > 0
+                    ? `${'⭐'.repeat(star)} `
+                    : '';
+
+            return ctx.reply(
+                `❌ ${stars}${alienName} was not found in your bag.\n\n` +
+                `Check the alien name and star level.`
+            );
+        }
+
+        if (!alien.alienId) {
+            return ctx.reply(
+                '❌ This alien is missing its Alien ID.'
+            );
+        }
+
+        // ====================
+        // CHANGE RAID ALIEN
+        // ====================
+
+        user.raidAlien = {
+            alienId: String(alien.alienId),
+            name: alien.name || '',
+            nickname: alien.nickname || '',
+            rarity: alien.rarity || '',
+            star: Number(alien.star || 0),
+            level: Number(alien.level || 1),
+            hp: Number(alien.hp || alien.maxHp || 1),
+            maxHp: Number(alien.maxHp || alien.hp || 1),
+            atk: Number(alien.atk || 0),
+            def: Number(alien.def || 0),
+            speed: Number(alien.speed || 0),
+            element: alien.element || '',
+            fileId: alien.fileId || ''
+        };
+
+        await user.save();
+
+        const stars =
+            Number(alien.star || 0) > 0
+                ? `${'⭐'.repeat(alien.star)} `
+                : '';
+
+        return ctx.reply(
+            `🔄 RAID ALIEN CHANGED!\n\n` +
+            `${stars}${alien.nickname || alien.name}\n` +
+            `⭐ Rarity: ${alien.rarity}\n` +
+            `🌌 Element: ${alien.element}\n\n` +
+            `🛡️ This alien will now be used in Alien Raid.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            '❌ /changeraidAlien error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while changing your Raid Alien.'
+        );
+    }
+});
+// ==================== DECK + RAID ALIEN ====================
+//
+// /deck
+//
+
+bot.command('deck', async (ctx) => {
+    try {
+
+        const userId = ctx.from.id;
+
+        const user = await User.findOne({
+            userId
+        });
+
+        if (!user) {
+            return ctx.reply(
+                '⚠️ Please send /start first!'
+            );
+        }
+
+        let message =
+            `🛸 YOUR ALIEN DECK\n\n`;
+
+        // ====================
+        // MAIN HUNT / FIGHT DECK
+        // ====================
+
+        message +=
+            `⚔️ MAIN DECK — ${user.deck?.length || 0}/4\n`;
+
+        if (
+            !user.deck ||
+            user.deck.length === 0
+        ) {
+
+            message +=
+                `└─ ❌ No alien set\n`;
+
+        } else {
+
+            user.deck.forEach(
+                (deckAlienId, index) => {
+
+                    const alien =
+                        user.aliens.find(
+                            a =>
+                                String(a.alienId) ===
+                                String(deckAlienId)
+                        );
+
+                    if (!alien) {
+
+                        message +=
+                            `${index + 1}. ❌ Unknown Alien\n`;
+
+                        return;
+                    }
+
+                    const stars =
+                        Number(alien.star || 0) > 0
+                            ? `${'⭐'.repeat(alien.star)} `
+                            : '';
+
+                    message +=
+                        `${index + 1}. ${stars}${alien.nickname || alien.name}\n`;
+                }
+            );
+        }
+
+        // ====================
+        // RAID ALIEN
+        // ====================
+
+        message +=
+            `\n🛡️ RAID ALIEN\n`;
+
+        if (!user.raidAlien) {
+
+            message +=
+                `└─ ❌ No Raid Alien set\n` +
+                `   Use /setraidAlien <alienname>`;
+
+        } else {
+
+            const raidAlien =
+                user.raidAlien;
+
+            const stars =
+                Number(raidAlien.star || 0) > 0
+                    ? `${'⭐'.repeat(raidAlien.star)} `
+                    : '';
+
+            message +=
+                `${stars}${raidAlien.nickname || raidAlien.name}\n` +
+                `⭐ Rarity: ${raidAlien.rarity || 'Unknown'}\n` +
+                `🌌 Element: ${raidAlien.element || 'Unknown'}`;
+        }
+
+        return ctx.reply(message);
+
+    } catch (error) {
+
+        console.error(
+            '❌ /deck error:',
+            error
+        );
+
+        return ctx.reply(
+            '❌ Something went wrong while checking your deck.'
         );
     }
 });
