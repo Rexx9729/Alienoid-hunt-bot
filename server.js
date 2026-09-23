@@ -21,6 +21,9 @@ const {
 const { registerHunt } = require('./services/hunt');
 const { registerFight, resetFightForUser } = require('./services/fight');
 const { registerAlienRaid } = require('./services/alienRaid');
+const {
+    resetRaidForUser
+} = require('./services/alienRaidEngine');
 const exploreCooldowns = new Map();
 // Express Keep-Alive Server
 const app = express();
@@ -942,8 +945,12 @@ bot.telegram.setMyCommands([
 });
 // ==================== /RESET ====================
 
+// ==================== /RESET ====================
+
 bot.command('reset', async (ctx) => {
+
     try {
+
         const userId =
             Number(ctx.from.id);
 
@@ -953,9 +960,17 @@ bot.command('reset', async (ctx) => {
         // RESET HUNT
         // ====================
 
-        if (ctx.session?.hunt) {
+        const hadHunt =
+            Boolean(
+                ctx.session?.hunt
+            );
+
+        if (hadHunt) {
+
             huntRefund =
-                Number(HUNT_COST || 20);
+                Number(
+                    HUNT_COST || 20
+                );
 
             await User.updateOne(
                 {
@@ -963,12 +978,14 @@ bot.command('reset', async (ctx) => {
                 },
                 {
                     $inc: {
-                        rupees: huntRefund
+                        rupees:
+                            huntRefund
                     }
                 }
             );
 
             ctx.session.hunt = null;
+
         }
 
         // ====================
@@ -986,31 +1003,60 @@ bot.command('reset', async (ctx) => {
                 fightResult?.refunded || 0
             );
 
+        // ====================
+        // RESET RAID
+        // ====================
+
+        const raidResult =
+            await resetRaidForUser(
+                userId,
+                User
+            );
+
+        const raidRefund =
+            Number(
+                raidResult?.refunded || 0
+            );
+
         const totalRefund =
             huntRefund +
-            fightRefund;
+            fightRefund +
+            raidRefund;
+
+        const foundSomething =
+            hadHunt ||
+            Boolean(
+                fightResult?.found
+            ) ||
+            Boolean(
+                raidResult?.ok
+            );
+
+        // ====================
+        // NO ACTIVE STATE
+        // ====================
+
+        if (!foundSomething) {
+
+            return ctx.reply(
+                'ℹ️ No active Hunt, Fight or Raid found.'
+            );
+
+        }
 
         // ====================
         // RESPONSE
         // ====================
 
-        if (
-            !ctx.session?.hunt &&
-            !fightResult?.found
-        ) {
-            return ctx.reply(
-                'ℹ️ No active Hunt or Fight found.'
-            );
-        }
-
         return ctx.reply(
             `✅ RESET COMPLETE\n\n` +
-            `❌ Active Hunt/Fight cancelled.\n` +
+            `❌ Active Hunt/Fight/Raid cancelled.\n` +
             `💰 Refunded: ₹${totalRefund}\n\n` +
             `You can start again now.`
         );
 
     } catch (error) {
+
         console.error(
             '❌ /reset error:',
             error
@@ -1019,7 +1065,9 @@ bot.command('reset', async (ctx) => {
         return ctx.reply(
             '❌ Reset failed. Please try again.'
         );
+
     }
+
 });
 // ==================== ADD ALIEN — CANCEL ====================
 
