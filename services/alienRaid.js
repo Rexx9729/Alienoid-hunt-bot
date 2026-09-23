@@ -1944,14 +1944,9 @@ defeated:
                 );
 
                 const updatedRaid =
-                    getRaid(raidId);
+    getRaid(raidId);
 
-                if (!updatedRaid) {
-                    return;
-                }
-                if (
-    updatedRaid.players.size === 0
-) {
+if (!updatedRaid) {
 
     await ctx.telegram.editMessageCaption(
         raid.chatId,
@@ -1968,10 +1963,8 @@ defeated:
         }
     );
 
-    removeRaid(raidId);
-
     return;
-                }
+}
 
                 // If solo player runs,
                 // raid ends with 0 reward.
