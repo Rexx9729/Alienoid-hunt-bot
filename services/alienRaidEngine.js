@@ -1498,8 +1498,10 @@ async function resetRaidForUser({
     User
 }) {
 
-    const raid =
-            if (
+        const raid =
+        getRaid(raidId);
+
+    if (
         raid &&
         expireRaidIfInactive(raid)
     ) {
@@ -1509,7 +1511,6 @@ async function resetRaidForUser({
             refunded: 0
         };
     }
-        getRaid(raidId);
 
     if (!raid) {
 
