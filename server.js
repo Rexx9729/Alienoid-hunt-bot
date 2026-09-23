@@ -20,6 +20,7 @@ const {
 } = require('./services/battleEngine');
 const { registerHunt } = require('./services/hunt');
 const { registerFight, resetFightForUser } = require('./services/fight');
+const { registerAlienRaid } = require('./services/alienRaid');
 const exploreCooldowns = new Map();
 // Express Keep-Alive Server
 const app = express();
