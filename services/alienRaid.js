@@ -532,9 +532,7 @@ ${createHpBar(boss.currentHp, boss.maxHp)}
             '\n━━━━━━━━━━━━━━━━\n';
 
     }
-
-    message +=
-        `👽 <b>${escapeHtml(player.alienName)}</b>\n` +
+ message +=
         `👤 <b>${escapeHtml(player.username)}</b>\n` +
         `❤️ ${player.currentHp}/${player.maxHp} HP\n` +
         `${createHpBar(player.currentHp, player.maxHp)}\n`;
@@ -562,11 +560,12 @@ function buildWinMessage(
 ) {
 
     let message =
-`YAHOO!! AND A REMARKABLE WIN 🔥
+`━━━━━━━━━━━━━━━━
+YAHOO!! AND A REMARKABLE WIN 🔥
 
 BOSS HAS ADMITTED HIS DEFEAT AND
 CHOOSEN TO RUN AWAY WHILE CRYING 😂
-
+━━━━━━━━━━━━━━━━
 HERE IS YOUR REWARD 💖
 
 `;
@@ -596,7 +595,8 @@ HERE IS YOUR REWARD 💖
         ) {
 
             message +=
-                `🎁 ${escapeHtml(reward.item.name)} ×${reward.item.quantity}\n`;
+                `🎁 ${escapeHtml(reward.item.name)} ×${reward.item.quantity}\n
+                ━━━━━━━━━━━━━━━━`;
 
         }
 
@@ -640,7 +640,8 @@ function buildLoseMessage(
         );
 
     let message =
-`AAH! THE WIN WAS TOO CLOSE 😭
+`━━━━━━━━━━━━━━━━
+AAH! THE WIN WAS TOO CLOSE 😭
 BETTER LUCK NEXT TIME 🤞🏻
 
 ${roast}
@@ -662,7 +663,8 @@ ${roast}
     message +=
         '\n💰 REWARD = 0\n' +
         '🎁 ITEMS = 0\n' +
-        '⭐ XP = 0';
+        `⭐ XP = <b>${reward.xp}</b>\n
+        ━━━━━━━━━━━━━━━━`;
 
     return message;
 }
