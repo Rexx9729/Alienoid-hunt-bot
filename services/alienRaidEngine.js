@@ -528,9 +528,11 @@ async function createRaid({
         );
     }
 
-    if (
-        Number(user.level || 1) <
-        Number(
+    const profileLevel = user.levelData?.level || 1;
+
+if (
+    profileLevel <
+    Number(
             RAID_CONFIG.LEVEL_REQUIREMENTS[
                 difficultyKey
             ] || 1
