@@ -667,7 +667,7 @@ ${roast}
     message +=
         '\n💰 REWARD = 0\n' +
         '🎁 ITEMS = 0\n' +
-        `⭐ XP = ${getRaidXp(currentRaid.difficulty, false)}\n` +
+        `⭐ XP = ${getRaidXp(raid.difficulty, false)}\n` +
     '\n━━━━━━━━━━━━━━━━\n';
     
 
