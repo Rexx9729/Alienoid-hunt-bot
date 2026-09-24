@@ -1920,7 +1920,7 @@ function calculateMultiplayerRewards(
 
     const baseXp =
         getRaidXp(
-        difficulty,
+        raid.difficulty,
         true
         );
 
