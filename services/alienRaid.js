@@ -566,9 +566,6 @@ function buildWinMessage(
     let message =
 `━━━━━━━━━━━━━━━━
 YAHOO!! AND A REMARKABLE WIN 🔥
-
-BOSS HAS ADMITTED HIS DEFEAT AND
-CHOOSEN TO RUN AWAY WHILE CRYING 😂
 ━━━━━━━━━━━━━━━━
 HERE IS YOUR REWARD 💖
 
@@ -610,7 +607,6 @@ HERE IS YOUR REWARD 💖
     // ==================== MULTIPLAYER WIN ====================
 
     message +=
-        buildContributionText(raid) +
         '\n━━━━━━━━━━━━━━━━\n\n';
 
     message +=
@@ -1743,26 +1739,37 @@ defeated:
                         currentRaid
                     );
 
-                await applyRaidRewards(
+                            await applyRaidRewards(
                     User,
                     currentRaid,
                     finalResult
                 );
 
-                await editRaidMessage(
-                    ctx,
-                    currentRaid,
+                try {
 
-                    buildWinMessage(
+                    await editRaidMessage(
+                        ctx,
                         currentRaid,
-                        finalResult
-                    ),
 
-                    {
-                        inline_keyboard:
-                            []
-                    }
-                );
+                        buildWinMessage(
+                            currentRaid,
+                            finalResult
+                        ),
+
+                        {
+                            inline_keyboard:
+                                []
+                        }
+                    );
+
+                } catch (uiError) {
+
+                    console.error(
+                        '❌ Raid WIN UI update error:',
+                        uiError
+                    );
+
+                }
 
                 removeRaid(
                     raidId
