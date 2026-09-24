@@ -13,7 +13,7 @@ module.exports = {
 
     // ==================== RAID LIMITS ====================
 
-    MAX_PLAYERS: 6,
+    MAX_PLAYERS: 4,
     MIN_MULTIPLAYER_PLAYERS: 1,
 
 
