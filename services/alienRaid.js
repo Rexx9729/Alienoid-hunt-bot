@@ -563,13 +563,7 @@ function buildWinMessage(
     result
 ) {
 
-    let message =
-`━━━━━━━━━━━━━━━━
-YAHOO!! AND A REMARKABLE WIN 🔥
-━━━━━━━━━━━━━━━━
-HERE IS YOUR REWARD 💖
-
-`;
+    // ==================== SOLO WIN ====================
 
     if (
         raid.mode ===
@@ -579,8 +573,15 @@ HERE IS YOUR REWARD 💖
         const reward =
             result.rewards;
 
-        message +=
-            `⭐ XP = <b>${reward.xp}</b>\n`;
+        let message =
+`━━━━━━━━━━━━━━━━
+👑 BOSS DEFEATED! 🔥
+━━━━━━━━━━━━━━━━
+
+🎁 REWARD
+
+⭐ XP = <b>${reward.xp}</b>
+`;
 
         if (
             reward.money > 0
@@ -596,21 +597,27 @@ HERE IS YOUR REWARD 💖
         ) {
 
             message +=
-                `🎁 ${escapeHtml(reward.item.name)} ×${reward.item.quantity}\n
-                ━━━━━━━━━━━━━━━━`;
+                `🎁 ${escapeHtml(reward.item.name)} ×${reward.item.quantity}\n`;
 
         }
+
+        message +=
+            '\n━━━━━━━━━━━━━━━━';
 
         return message;
     }
 
+
     // ==================== MULTIPLAYER WIN ====================
 
-    message +=
-        '\n━━━━━━━━━━━━━━━━\n\n';
+    let message =
+`━━━━━━━━━━━━━━━━
+👑 BOSS DEFEATED! 🔥
+━━━━━━━━━━━━━━━━
 
-    message +=
-        '<b>🎁 REWARDS</b>\n\n';
+🎁 <b>REWARDS</b>
+
+`;
 
     for (
         const reward of
@@ -618,11 +625,10 @@ HERE IS YOUR REWARD 💖
     ) {
 
         message +=
-            `👤 <b>${escapeHtml(reward.username)}</b>\n` +
+            `👤 <b>${escapeHtml(reward.username)}</b> ` +
             `🔥 ${reward.damage} DMG ` +
-            `(${Number(reward.contribution || 0).toFixed(1)}%)\n` +
-            `⭐ XP = <b>${reward.xp}</b>\n` +
-            `💰 Rupees = <b>₹${reward.money}</b>\n\n`;
+            `⭐ ${reward.xp} XP ` +
+            `💰 ₹${reward.money}\n`;
 
     }
 
