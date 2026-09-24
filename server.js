@@ -69,7 +69,6 @@ const userSchema = new mongoose.Schema({
         type: [Number],
         default: []
     },
-    level: { type: Number, default: 1 },
     rupees: { type: Number, default: 1000 },
     hunts: { type: Number, default: 0 },
     huntProgress: {
@@ -185,58 +184,12 @@ const groupSchema = new mongoose.Schema({
 });
 
 const Group = mongoose.model('Group', groupSchema);
-// ==================== XP & LEVEL SYSTEM ====================
+// ==================== XP & LEVEL SYSTEM ======
+const {
+    getTotalXP,
+    getLevelData
+} = require('./services/levelSystem');
 
-const HUNT_XP = 50;
-const DUEL_XP = 80;
-
-const FIRST_LEVEL_XP = 500;
-const SECOND_LEVEL_XP = 800;
-const XP_INCREASE_PER_LEVEL = 300;
-
-function getTotalXP(user) {
-    const hunts = Number(user.hunts || 0);
-    const duels = Number(user.duels || 0);
-    const raidXp = Number(user.raidXp || 0);
-
-    return (
-        (hunts * HUNT_XP) +
-        (duels * DUEL_XP) +
-        raidXp
-    );
-}
-
-function getLevelData(user) {
-    const totalXP = getTotalXP(user);
-
-    let level = 1;
-    let previousMilestone = 0;
-
-    // Level 1 -> 2 = 500 XP
-    let requiredForNextLevel = FIRST_LEVEL_XP;
-
-    while (totalXP >= previousMilestone + requiredForNextLevel) {
-        previousMilestone += requiredForNextLevel;
-        level++;
-
-        // Level 2 -> 3 = 800 XP
-        if (level === 2) {
-            requiredForNextLevel = SECOND_LEVEL_XP;
-        } else {
-            // Every level after that: +300 XP
-            requiredForNextLevel += XP_INCREASE_PER_LEVEL;
-        }
-    }
-
-    const nextMilestone = previousMilestone + requiredForNextLevel;
-
-    return {
-        level,
-        currentXP: totalXP,
-        nextMilestone,
-        requiredXP: requiredForNextLevel
-    };
-}
 // ==================== GLOBAL DAILY EARNING CAP ====================
 
 // ==================== REDEEM CODE MODEL ====================
