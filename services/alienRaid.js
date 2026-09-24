@@ -663,8 +663,9 @@ ${roast}
     message +=
         '\n💰 REWARD = 0\n' +
         '🎁 ITEMS = 0\n' +
-        `⭐ XP = <b>${reward.xp}</b>\n
-        ━━━━━━━━━━━━━━━━`;
+        `⭐ XP = 0\n` +
+    '\n━━━━━━━━━━━━━━━━\n';
+    
 
     return message;
 }
