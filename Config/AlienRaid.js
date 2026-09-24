@@ -34,8 +34,8 @@ module.exports = {
 
             money: {
                 chance: 50,
-                min: 700,
-                max: 1000
+                min: 1500,
+                max: 2000
             },
 
             items: [
@@ -76,8 +76,8 @@ module.exports = {
 
             money: {
                 chance: 50,
-                min: 1300,
-                max: 1700
+                min: 2000,
+                max: 2500
             },
 
             items: [
@@ -118,8 +118,8 @@ module.exports = {
 
             money: {
                 chance: 50,
-                min: 2300,
-                max: 2600
+                min: 3000,
+                max: 3600
             },
 
             items: [
