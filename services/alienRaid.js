@@ -614,7 +614,7 @@ function buildWinMessage(
 const contributions =
     calculateContributions(raid);
 
-message =
+let message =
 `🎉 <b>WIN</b> 🎊
 
 `;
@@ -1835,6 +1835,10 @@ defeated:
                 return;
             }
 
+            if (updatedRaid.status !== 'active') {
+    return;
+            }
+
             const activePlayer =
                 updatedRaid.players.get(
                     userId
@@ -1968,6 +1972,17 @@ defeated:
                                 true
                         }
                     );
+
+                }
+                if (raid.status !== 'active') {
+
+    return ctx.answerCbQuery(
+        '❌ This raid has already ended.',
+        {
+            show_alert:
+                true
+        }
+    );
 
                 }
 
