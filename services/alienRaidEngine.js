@@ -12,7 +12,10 @@ const {
 
 const RAID_CONFIG =
     require('../Config/AlienRaid');
-
+const {
+    getLevelData,
+    getRaidXp
+} = require('./levelSystem');
 
 // ==================== ACTIVE RAID STORAGE ====================
 
@@ -528,7 +531,8 @@ async function createRaid({
         );
     }
 
-    const profileLevel = user.levelData?.level || 1;
+    const profileLevel =
+    getLevelData(user).level;
 
 if (
     profileLevel <
@@ -1745,9 +1749,9 @@ function calculateSoloReward(
     }
 
     const xp =
-        randomNumber(
-            config.xp.min,
-            config.xp.max
+        getRaidXp(
+        difficulty,
+        true
         );
 
     const moneyRoll =
@@ -1915,9 +1919,9 @@ function calculateMultiplayerRewards(
     */
 
     const baseXp =
-        randomNumber(
-            config.xp.min,
-            config.xp.max
+        getRaidXp(
+        difficulty,
+        true
         );
 
     const moneyBase =
