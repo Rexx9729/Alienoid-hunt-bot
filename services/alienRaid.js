@@ -1751,6 +1751,9 @@ defeated:
                     currentRaid,
                     finalResult
                 );
+                removeRaid(
+                    raidId
+                );
 
                 try {
 
@@ -1777,10 +1780,6 @@ defeated:
                     );
 
                 }
-
-                removeRaid(
-                    raidId
-                );
 
                 return;
             }
