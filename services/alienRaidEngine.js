@@ -1046,18 +1046,18 @@ function executeBossAttack(
     // Active Dodge
     if (player.dodging) {
 
-        player.dodging =
-            false;
+    player.dodging = false;
 
+    const dodgeSuccess =
+        Math.random() < 0.70;
+
+    if (dodgeSuccess) {
         return {
-
             damage: 0,
-
             attack,
-
             dodged: true
-
         };
+    }
 
     }
 
@@ -1100,7 +1100,7 @@ function executeBossAttack(
             Math.max(
                 1,
                 Math.round(
-                    damage * 0.50
+                    damage * 0.30
                 )
             );
 
