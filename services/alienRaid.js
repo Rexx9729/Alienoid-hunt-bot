@@ -15,6 +15,10 @@ const {
     removeRaid
 } = require('./alienRaidEngine');
 
+const {
+    getRaidXp
+} = require('./levelSystem');
+
 const RAID_CONFIG =
     require('../Config/AlienRaid');
 
@@ -965,6 +969,52 @@ async function applyRaidRewards(
 
 // ==================== RAID DEFEAT CHECK ====================
 
+async function applyRaidDefeatXp(
+    User,
+    raid
+) {
+
+    const loseXp =
+        getRaidXp(
+            raid.difficulty,
+            false
+        );
+
+    const players =
+        Array.from(
+            raid.players.values()
+        );
+
+    for (
+        const player of players
+    ) {
+
+        const user =
+            await User.findOne({
+                userId:
+                    Number(
+                        player.userId
+                    )
+            });
+
+        if (!user) {
+            continue;
+        }
+
+        user.raidXp =
+            Number(
+                user.raidXp || 0
+            ) +
+            loseXp;
+
+        await user.save();
+
+    }
+
+    return loseXp;
+}
+
+
 function allPlayersDefeated(
     raid
 ) {
@@ -1735,6 +1785,10 @@ defeated:
 
                     currentRaid.status =
                         'defeated';
+                    await applyRaidDefeatXp(
+    User,
+    currentRaid
+);
 
                     await editRaidMessage(
                         ctx,
