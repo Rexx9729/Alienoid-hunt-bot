@@ -609,30 +609,31 @@ function buildWinMessage(
 
 
     // ==================== MULTIPLAYER WIN ====================
+// ==================== MULTIPLAYER WIN ====================
 
-    let message =
-`━━━━━━━━━━━━━━━━
-👑 BOSS DEFEATED! 🔥
-━━━━━━━━━━━━━━━━
+const contributions =
+    calculateContributions(raid);
 
-🎁 <b>REWARDS</b>
+message =
+`🎉 <b>WIN</b> 🎊
 
 `;
 
-    for (
-        const reward of
-        result.rewards
-    ) {
+contributions
+    .slice(0, 4)
+    .forEach(player => {
 
         message +=
-            `👤 <b>${escapeHtml(reward.username)}</b> ` +
-            `🔥 ${reward.damage} DMG ` +
-            `⭐ ${reward.xp} XP ` +
-            `💰 ₹${reward.money}\n`;
+            `${escapeHtml(player.username)} = ` +
+            `${player.damage} DMG ` +
+            `(${Number(player.contribution || 0).toFixed(1)}%)\n`;
 
-    }
+    });
 
-    return message;
+message +=
+    `\nALL REWARDS ALREADY ADDED TO YOUR INVENTORY ✅`;
+
+return message;
 }
 
 
