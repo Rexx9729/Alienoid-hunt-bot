@@ -1813,7 +1813,7 @@ defeated:
 
             // ==================== NORMAL UPDATE ====================
 
-            await sleep(2000);
+            await sleep(1400);
 
             const updatedRaid =
                 getRaid(raidId);
@@ -1872,7 +1872,7 @@ defeated:
 
             // Keep the UI locked for the
             // full update cycle.
-            await sleep(2000);
+            await sleep(1400);
 
             raidUiLocks.set(
                 uiKey,
