@@ -687,6 +687,22 @@ async function joinRaid({
         };
 
     }
+    const existingRaid =
+    getActiveRaidForUser(
+        Number(user.userId)
+    );
+
+if (
+    existingRaid &&
+    existingRaid.raidId !== raidId
+) {
+
+    return {
+        ok: false,
+        reason: 'already_active_raid'
+    };
+
+}
 
     if (
         raid.players.has(
