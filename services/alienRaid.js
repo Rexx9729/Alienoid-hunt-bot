@@ -1729,7 +1729,7 @@ defeated:
                     '❌ This move could not be completed.',
                     {
                         show_alert:
-                            false
+                            result?.reason === 'no_healerx'
                     }
                 );
 
