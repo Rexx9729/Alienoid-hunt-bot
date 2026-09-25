@@ -616,22 +616,31 @@ const contributions =
 
 let message =
 `🎉 <b>WIN</b> 🎊
-
+───────────────
 `;
 
 contributions
-    .slice(0, 4)
-    .forEach(player => {
+    .forEach((player, index) => {
+
+        const reward =
+            result.rewards?.find(
+                r =>
+                    Number(r.userId) ===
+                    Number(player.userId)
+            );
 
         message +=
-            `${escapeHtml(player.username)} = ` +
+            `${index + 1}🔹${escapeHtml(player.username)} = ` +
             `${player.damage} DMG ` +
-            `(${Number(player.contribution || 0).toFixed(1)}%)\n`;
+            `(${Number(player.contribution || 0).toFixed(1)}%) ` +
+            `xp = ${reward?.xp || 0} ` +
+            `rupees = ₹${reward?.money || 0}\n`;
 
     });
 
 message +=
-    `\nALL REWARDS ALREADY ADDED TO YOUR INVENTORY ✅`;
+    `───────────────\n` +
+    `Reward distributed ✅`;
 
 return message;
 }
