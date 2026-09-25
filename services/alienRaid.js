@@ -1624,7 +1624,7 @@ already_active_raid:
 
         try {
 
-            await ctx.answerCbQuery();
+    
 
             let result;
 
