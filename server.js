@@ -857,6 +857,11 @@ bot.telegram.setMyCommands([
 { command: 'richest', description: 'to see the richest player globally' },
 { command: 'nickname', description: 'to set a nickname of your alien' },
 { command: 'refer', description: 'refer and earn bot money and rare items' },
+    { command: 'araid', description: 'to start a Raid' },
+{ command: 'setraidalien', description: 'to set a main raid alien' },
+{ command: 'deck', description: 'to check active deck' },
+{ command: 'changeraidalien', description: 'to change active main raid alien' },
+{ command: 'bal', description: 'to check balance' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'hunt', description: 'Hunt a wild alien' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
@@ -887,6 +892,11 @@ bot.telegram.setMyCommands([
     { command: 'fight', description: 'fight with other users' },
     { command: 'check', description: 'Check alien database info' },
     { command: 'daily', description: 'Claim your daily ₹500 reward' },
+    { command: 'araid', description: 'to start a Raid' },
+{ command: 'setraidalien', description: 'to set a main raid alien' },
+{ command: 'deck', description: 'to check active deck' },
+{ command: 'changeraidalien', description: 'to change active main raid alien' },
+{ command: 'bal', description: 'to check balance' },
     { command: 'redeem', description: 'Redeem an Alienoid reward code. you can get codes from Alienoid support group' },
     { command: 'rpay', description: 'Send Rupees to another player' },
     { command: 'agive', description: 'Give an alien to another player' },
@@ -4629,7 +4639,7 @@ bot.command('setraidalien', async (ctx) => {
 // /changeraidAlien alienname 3s
 //
 
-bot.command('changeraidAlien', async (ctx) => {
+bot.command('changeraidalien', async (ctx) => {
     try {
 
         const userId = ctx.from.id;
