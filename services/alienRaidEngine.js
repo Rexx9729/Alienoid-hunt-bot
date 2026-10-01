@@ -548,6 +548,8 @@ if (
     }
     raidCreationLocks.add(userId);
 
+try {
+
     const player =
         await createRaidPlayer(user);
 
@@ -631,9 +633,13 @@ if (
         raid
     );
 
-        raidCreationLocks.delete(userId);
-
     return raid;
+
+} finally {
+
+    raidCreationLocks.delete(userId);
+
+}
 }
 
 
