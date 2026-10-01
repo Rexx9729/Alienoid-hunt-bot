@@ -4451,7 +4451,7 @@ bot.command('out', async (ctx) => {
 // /setraidAlien alienname 3s
 //
 
-bot.command('setraidAlien', async (ctx) => {
+bot.command('setraidalien', async (ctx) => {
     try {
 
         const userId = ctx.from.id;
