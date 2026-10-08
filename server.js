@@ -182,7 +182,21 @@ const groupSchema = new mongoose.Schema({
     rewardedUsers: {
     type: [Number],
     default: []
-    }
+    },
+    rewardClaimed: {
+    type: Boolean,
+    default: false
+},
+
+rewardedBy: {
+    type: Number,
+    default: null
+},
+
+botPresent: {
+    type: Boolean,
+    default: true
+}
 }, {
     timestamps: true
 });
@@ -665,17 +679,25 @@ bot.on('my_chat_member', async (ctx) => {
         // ============================
 
         if (
-            newStatus === 'left' ||
-            newStatus === 'kicked'
-        ) {
+    newStatus === 'left' ||
+    newStatus === 'kicked'
+) {
 
-            await Group.deleteOne({
-                chatId: chat.id
-            });
+    await Group.updateOne(
+        {
+            chatId: chat.id
+        },
+        {
+            $set: {
+                botPresent: false,
+                title: chat.title || 'Unknown Group'
+            }
+        }
+    );
 
-            console.log(
-                `🗑️ Group removed: ${chat.title} (${chat.id})`
-            );
+    console.log(
+        `🚪 Bot removed from group: ${chat.title} (${chat.id})`
+    );
         }
 
     } catch (error) {
