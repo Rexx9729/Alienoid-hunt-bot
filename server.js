@@ -178,6 +178,10 @@ const groupSchema = new mongoose.Schema({
     members: {
         type: [Number],
         default: []
+    },
+    rewardedUsers: {
+    type: [Number],
+    default: []
     }
 }, {
     timestamps: true
@@ -477,30 +481,42 @@ bot.use(async (ctx, next) => {
 
 // ==================== END USER ACTIVITY TRACKING ====================
 // ==================== AUTO SAVE GROUP ====================
+// ==================== AUTO SAVE GROUP + GROUP JOIN REWARD ====================
 
 bot.on('my_chat_member', async (ctx) => {
 
     try {
 
         const chat = ctx.chat;
-        const newStatus = ctx.myChatMember?.new_chat_member?.status;
+        const newStatus =
+            ctx.myChatMember?.new_chat_member?.status;
+
+        const addedByUserId =
+            Number(ctx.from?.id);
 
         if (!chat) {
             return;
         }
 
         // Only groups and supergroups
-        if (chat.type !== 'group' && chat.type !== 'supergroup') {
+        if (
+            chat.type !== 'group' &&
+            chat.type !== 'supergroup'
+        ) {
             return;
         }
 
-        // Bot added / remains in group
+        // ============================
+        // BOT ADDED / PROMOTED
+        // ============================
+
         if (
             newStatus === 'member' ||
             newStatus === 'administrator'
         ) {
 
-            await Group.updateOne(
+            // Save group
+            const group = await Group.findOneAndUpdate(
                 { chatId: chat.id },
                 {
                     $set: {
@@ -508,15 +524,146 @@ bot.on('my_chat_member', async (ctx) => {
                         title: chat.title || 'Unknown Group'
                     }
                 },
-                { upsert: true }
+                {
+                    upsert: true,
+                    new: true
+                }
             );
 
             console.log(
                 `✅ Group registered: ${chat.title} (${chat.id})`
             );
+
+            // ============================
+            // GROUP ADD REWARD
+            // ============================
+
+            if (!addedByUserId) {
+                return;
+            }
+
+            // Check whether this user already
+            // received reward for this group
+            if (
+                group.rewardedUsers &&
+                group.rewardedUsers.includes(addedByUserId)
+            ) {
+                return;
+            }
+
+            // Find or create user
+            let user = await User.findOne({
+                userId: addedByUserId
+            });
+
+            if (!user) {
+
+                user = new User({
+                    userId: addedByUserId,
+                    username:
+                        ctx.from?.username ||
+                        ctx.from?.first_name ||
+                        'Hunter'
+                });
+
+                await user.save();
+            }
+
+            // ============================
+            // FIND RANDOM RARE ALIEN
+            // ============================
+
+            const rareAliens =
+                await Alien.find({
+                    rarity: 'Rare'
+                });
+
+            if (!rareAliens.length) {
+
+                console.error(
+                    '❌ GROUP REWARD ERROR: No Rare aliens found in database.'
+                );
+
+                return;
+            }
+
+            const randomAlien =
+                rareAliens[
+                    Math.floor(
+                        Math.random() *
+                        rareAliens.length
+                    )
+                ];
+
+            // ============================
+            // ADD RARE ALIEN
+            // ============================
+
+            user.aliens.push({
+                alienId: randomAlien.alienId,
+                name: randomAlien.name,
+                nickname: randomAlien.nickname || '',
+                rarity: randomAlien.rarity,
+                star: randomAlien.star || 0,
+                level: randomAlien.level || 1,
+                hp: randomAlien.hp,
+                maxHp: randomAlien.maxHp,
+                atk: randomAlien.atk,
+                def: randomAlien.def,
+                speed: randomAlien.speed || 0,
+                element: randomAlien.element,
+                fileId: randomAlien.fileId || ''
+            });
+
+            // ============================
+            // ADD ₹5000
+            // ============================
+
+            user.rupees =
+                Number(user.rupees || 0) + 5000;
+
+            await user.save();
+
+            // ============================
+            // MARK REWARD AS CLAIMED
+            // ============================
+
+            await Group.updateOne(
+                {
+                    chatId: chat.id
+                },
+                {
+                    $addToSet: {
+                        rewardedUsers: addedByUserId
+                    }
+                }
+            );
+
+            // ============================
+            // SEND REWARD MESSAGE
+            // ============================
+
+            await ctx.reply(
+                `🎉 <b>GROUP REWARD UNLOCKED!</b>\n\n` +
+                `👤 Added by: ${ctx.from?.first_name || 'Hunter'}\n\n` +
+                `💰 Reward: <b>₹5000</b>\n` +
+                `👽 Rare Alien: <b>${randomAlien.name}</b>\n` +
+                `✨ Rarity: <b>${randomAlien.rarity}</b>\n\n` +
+                `Congratulations! 🎊`,
+                {
+                    parse_mode: 'HTML'
+                }
+            );
+
+            console.log(
+                `🎁 Group reward given to ${addedByUserId}: ₹5000 + ${randomAlien.name}`
+            );
         }
 
-        // Bot removed from group
+        // ============================
+        // BOT REMOVED FROM GROUP
+        // ============================
+
         if (
             newStatus === 'left' ||
             newStatus === 'kicked'
@@ -534,7 +681,7 @@ bot.on('my_chat_member', async (ctx) => {
     } catch (error) {
 
         console.error(
-            '❌ Group registration error:',
+            '❌ Group registration/reward error:',
             error
         );
     }
