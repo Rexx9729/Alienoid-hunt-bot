@@ -718,7 +718,7 @@ console.log(
     console.log(
         `🚪 Bot removed from group: ${chat.title} (${chat.id})`
     );
-        }
+        
 
     } catch (error) {
 
