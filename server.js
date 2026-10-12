@@ -183,6 +183,10 @@ const groupSchema = new mongoose.Schema({
     type: [Number],
     default: []
     },
+    addedBy: {
+    type: Number,
+    default: null
+},
     rewardClaimed: {
     type: Boolean,
     default: false
@@ -547,132 +551,148 @@ bot.on('my_chat_member', async (ctx) => {
             console.log(
                 `✅ Group registered: ${chat.title} (${chat.id})`
             );
-
-            // ============================
-            // GROUP ADD REWARD
-            // ============================
-
-            if (!addedByUserId) {
-                return;
-            }
-
-            // Check whether this user already
-            // received reward for this group
-            if (
-                group.rewardedUsers &&
-                group.rewardedUsers.includes(addedByUserId)
-            ) {
-                return;
-            }
-
-            // Find or create user
-            let user = await User.findOne({
-                userId: addedByUserId
-            });
-
-            if (!user) {
-
-                user = new User({
-                    userId: addedByUserId,
-                    username:
-                        ctx.from?.username ||
-                        ctx.from?.first_name ||
-                        'Hunter'
-                });
-
-                await user.save();
-            }
-
-            // ============================
-            // FIND RANDOM RARE ALIEN
-            // ============================
-
-            const rareAliens =
-                await Alien.find({
-                    rarity: 'Rare'
-                });
-
-            if (!rareAliens.length) {
-
-                console.error(
-                    '❌ GROUP REWARD ERROR: No Rare aliens found in database.'
-                );
-
-                return;
-            }
-
-            const randomAlien =
-                rareAliens[
-                    Math.floor(
-                        Math.random() *
-                        rareAliens.length
-                    )
-                ];
-
-            // ============================
-            // ADD RARE ALIEN
-            // ============================
-
-            user.aliens.push({
-                alienId: randomAlien.alienId,
-                name: randomAlien.name,
-                nickname: randomAlien.nickname || '',
-                rarity: randomAlien.rarity,
-                star: randomAlien.star || 0,
-                level: randomAlien.level || 1,
-                hp: randomAlien.hp,
-                maxHp: randomAlien.maxHp,
-                atk: randomAlien.atk,
-                def: randomAlien.def,
-                speed: randomAlien.speed || 0,
-                element: randomAlien.element,
-                fileId: randomAlien.fileId || ''
-            });
-
-            // ============================
-            // ADD ₹5000
-            // ============================
-
-            user.rupees =
-                Number(user.rupees || 0) + 5000;
-
-            await user.save();
-
-            // ============================
-            // MARK REWARD AS CLAIMED
-            // ============================
-
-            await Group.updateOne(
-                {
-                    chatId: chat.id
-                },
-                {
-                    $addToSet: {
-                        rewardedUsers: addedByUserId
-                    }
-                }
-            );
-
-            // ============================
-            // SEND REWARD MESSAGE
-            // ============================
-
-            await ctx.reply(
-                `🎉 <b>GROUP REWARD UNLOCKED!</b>\n\n` +
-                `👤 Added by: ${ctx.from?.first_name || 'Hunter'}\n\n` +
-                `💰 Reward: <b>₹5000</b>\n` +
-                `👽 Rare Alien: <b>${randomAlien.name}</b>\n` +
-                `✨ Rarity: <b>${randomAlien.rarity}</b>\n\n` +
-                `Congratulations! 🎊`,
-                {
-                    parse_mode: 'HTML'
-                }
-            );
-
-            console.log(
-                `🎁 Group reward given to ${addedByUserId}: ₹5000 + ${randomAlien.name}`
-            );
+// Welcome message when bot is added to a group
+if (newStatus === 'member') {
+    await ctx.reply(
+        `👋 <b>Hey everyone!</b>\n\n` +
+        `🤖 Thanks for adding me to this group!\n\n` +
+        `👑 <b>Make me an ADMIN of this group</b>\n` +
+        `🎁 Claim your group-adding bonus:\n` +
+        `💰 Up to ₹5000 + 🎁 a Rare Alien gift!\n\n` +
+        `⚡ Promote me to admin to unlock your reward!`,
+        { parse_mode: 'HTML' }
+    );
         }
+            // ============================
+            // ============================
+// GROUP REWARD - ADMIN REQUIRED
+// ============================
+
+if (!addedByUserId) return;
+
+// If this group already received a reward,
+// permanently prevent another reward.
+if (
+    group.rewardClaimed ||
+    (group.rewardedUsers && group.rewardedUsers.length > 0)
+) {
+    if (!group.rewardClaimed) {
+        await Group.updateOne(
+            { chatId: chat.id },
+            { $set: { rewardClaimed: true } }
+        );
+    }
+    return;
+}
+
+// Save the ORIGINAL user who added the bot.
+// Do not overwrite this ID when another admin promotes it.
+if (!group.addedBy) {
+    group.addedBy = addedByUserId;
+    await group.save();
+}
+
+// Adding the bot is not enough.
+// Wait until the bot becomes an administrator.
+if (newStatus !== 'administrator') return;
+
+const rewardUserId = Number(group.addedBy);
+
+if (!rewardUserId) return;
+
+// Find or create the ORIGINAL adder's account.
+let user = await User.findOne({
+    userId: rewardUserId
+});
+
+if (!user) {
+    user = new User({
+        userId: rewardUserId,
+        username:
+            rewardUserId === addedByUserId
+                ? (
+                    ctx.from?.username ||
+                    ctx.from?.first_name ||
+                    'Hunter'
+                )
+                : 'Hunter'
+    });
+}
+
+// Select one random Rare alien.
+const rareAliens = await Alien.find({
+    rarity: 'Rare'
+});
+
+if (!rareAliens.length) {
+    console.error(
+        '❌ GROUP REWARD: No Rare aliens found.'
+    );
+    return;
+}
+
+const randomAlien =
+    rareAliens[
+        Math.floor(Math.random() * rareAliens.length)
+    ];
+
+// Atomically claim this group's lifetime reward.
+// Only one event can successfully claim it.
+const claimedGroup = await Group.findOneAndUpdate(
+    {
+        chatId: chat.id,
+        rewardClaimed: { $ne: true }
+    },
+    {
+        $set: {
+            rewardClaimed: true,
+            rewardedBy: rewardUserId
+        },
+        $addToSet: {
+            rewardedUsers: rewardUserId
+        }
+    },
+    {
+        new: true
+    }
+);
+
+if (!claimedGroup) return;
+
+// Give the reward to the ORIGINAL adder.
+user.aliens.push({
+    alienId: randomAlien.alienId,
+    name: randomAlien.name,
+    nickname: randomAlien.nickname || '',
+    rarity: randomAlien.rarity,
+    star: randomAlien.star || 0,
+    level: randomAlien.level || 1,
+    hp: randomAlien.hp,
+    maxHp: randomAlien.maxHp,
+    atk: randomAlien.atk,
+    def: randomAlien.def,
+    speed: randomAlien.speed || 0,
+    element: randomAlien.element,
+    fileId: randomAlien.fileId || ''
+});
+
+user.rupees = Number(user.rupees || 0) + 5000;
+
+await user.save();
+
+await ctx.reply(
+    `🎉 <b>GROUP REWARD UNLOCKED!</b>\n\n` +
+    `👤 Original Adder ID: <b>${rewardUserId}</b>\n\n` +
+    `💰 Reward: <b>₹5000</b>\n` +
+    `👽 Rare Alien: <b>${randomAlien.name}</b>\n` +
+    `✨ Rarity: <b>${randomAlien.rarity}</b>\n\n` +
+    `Congratulations! 🎊`,
+    { parse_mode: 'HTML' }
+);
+
+console.log(
+    `🎁 Group ${chat.id}: reward given to original adder ${rewardUserId}`
+);
 
         // ============================
         // BOT REMOVED FROM GROUP
@@ -8402,9 +8422,10 @@ if (!repliedMessage && !text) {
                     error.response?.error_code === 400 ||
                     error.response?.error_code === 403
                 ) {
-                    await Group.deleteOne({
-                        chatId: group.chatId
-                    });
+                    await Group.updateOne(
+    { chatId: group.chatId },
+    { $set: { botPresent: false } }
+);
                 }
             }
         }
